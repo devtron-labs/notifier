@@ -107,8 +107,12 @@ export class SESService implements Handler {
 
     public async sendNotification(event: Event, sdk: NotifmeSdk, template: string) {
         try {
+            this.logger.info("event - ", event)
+            this.logger.info("event - " + event)
             let json = Mustache.render(JSON.stringify(template), event.payload)
             json = JSON.parse(json)
+            this.logger.info("json - ", json)
+            this.logger.info("json - " + json)
             const res = await sdk.send(
                 {
                     email: json

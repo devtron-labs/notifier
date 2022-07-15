@@ -27,6 +27,9 @@ class NotificationService {
 
     public sendNotification(event: Event) {
 
+        this.logger.info("eventorg - ", event)
+        this.logger.info("eventorg - ", event)
+
         if (!this.isValidEvent(event)) {
             return
         }
