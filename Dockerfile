@@ -19,6 +19,6 @@ WORKDIR /app
 COPY --from=builder /app/dist/ ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/config/ ./config/
-COPY /app/a.js ./node_modules/notifme-sdk/lib/providers/email/ses.js
+COPY /app/a.txt ./node_modules/notifme-sdk/lib/providers/email/ses.js
 
 CMD ["node","server.js"]
