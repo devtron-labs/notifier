@@ -110,7 +110,9 @@ export class SESService implements Handler {
             this.logger.info("event - ", event)
             this.logger.info("event - " + event)
             let json = Mustache.render(JSON.stringify(template), event.payload)
+            this.logger.info("first typeof - " , typeof(json))
             json = JSON.parse(json)
+            this.logger.info("2nd typeof - " , typeof(json))
             this.logger.info("json - ", json)
             this.logger.info("json - " + json)
             const res = await sdk.send(
