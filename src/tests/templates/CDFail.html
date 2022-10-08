@@ -12,10 +12,11 @@
 </head>
 
 <body>
+  <div style="background-color: #f2f4f7; height: 100vh;">
   <div class="notification-wrapper"
-    style="border: 1px solid #f2f4f7; max-width: 600px; margin: auto;color: #000a14; font-family: Open Sans; font-size: 14px;">
+    style="border: 1px solid #f2f4f7; max-width: 600px; margin: auto;color: #000a14; font-family: Open Sans; font-size: 14px; background-color: #fff;">
     <div style="padding: 20px; border-bottom: 1px solid #f2f4f7;">
-      <img style="max-width: 122px;" src="../../../assets/image/ic-nav-logo@2x.png" alt="ci-triggered" />
+      <img style="max-width: 122px;" src="https://cdn.devtron.ai/images/ic-nav-logo2x.png" alt="ci-triggered" />
     </div>
 
     <!-- Status banner -->
@@ -25,9 +26,9 @@
           <div>
             <div style="font-size: 16px;font-weight: 600; ">❌ <span style="padding-left: 10px"> Pre-deloyment pipeline
                 failed</span></div>
-            <div style="padding-top: 4px; line-height: 1.43;">Thu, 04 Jun 2020, 11:17 am</div>
+            <div style="padding-top: 4px; line-height: 1.43;">{{eventTime}}</div>
             <div style=" padding-bottom: 20px; line-height: 1.43;"> by <span
-                style="color: #0066cc;">prakarsh@devtron.ai</span></div>
+                style="color: #0066cc;">{{triggeredBy}}</span></div>
 
           </div>
 
@@ -85,9 +86,9 @@
           </svg>
         </div>
         <div style="display: flex;">
-          <a href="" target="_blank" style=" font-size: 12px; color: #fff; border-radius: 4px;
+          {{#buildHistoryLink}}<a href="{{& buildHistoryLink }}"target="_blank" style=" font-size: 12px; color: #fff; border-radius: 4px;
           background: #0066cc; padding-top: 10px; padding-bottom: 10px; padding-right: 12px; padding-left: 10px; cursor: pointer; text-decoration: none;
-          font-weight: 600;">View Pipeline</a>
+          font-weight: 600;">View Pipeline</a>{{/buildHistoryLink}}
           <a href="" target="_blank" style="margin-left: 8px; font-size: 12px; color: #3b444c; border-radius: 4px;border: solid 1px #d0d4d9;
           background: #fff; padding-top: 10px; padding-bottom: 10px; padding-right: 12px; padding-left: 10px; cursor: pointer; text-decoration: none;
           font-weight: 600;">App details</a>
@@ -98,43 +99,79 @@
       style="display: grid; padding: 20px; padding-top: 0px; border-bottom: 1px solid #edf1f5; grid-template-columns: 50% 50%;">
       <div>
         <div style="font-size: 12px; color: #3b444c; font-weight: 600;">Application</div>
-        <div>dasboard</div>
+        <div>{{appName}}</div>
       </div>
       <div>
         <div style="font-size: 12px; color: #3b444c; font-weight: 600;">Pipeline</div>
-        <div>dasboard</div>
+        <div>{{pipelineName}}</div>
       </div>
     </div>
+    {{#ciMaterials}}
+    {{^webhookType}}
+    <div>
     <div style="font-weight: 700; padding: 20px; padding-bottom: 0px;">
       Source Code
     </div>
     <div style="display: grid; padding: 20px; grid-template-columns: 50% 50%;">
       <div>
         <div style="font-size: 12px; color: #3b444c; font-weight: 600;">Branch</div>
-        <div>dashboard/master</div>
+        <div>{{appName}}/{{branch}}</div>
       </div>
       <div>
         <div style="font-size: 12px; color: #3b444c; font-weight: 600;">Commit</div>
-        <div style="color: #0066cc;">b5cd4468</div>
+        <a href="{{& commitLink }}" target="_blank" style="color: #0066cc;"> {{commit}}</a>
       </div>
     </div>
+
+    </div>
+   {{/webhookType}}
+   {{#webhookType}}{{#webhookData.mergedType}
+   <div style="display: grid; padding: 20px; grid-template-columns: 50% 50%;">
+    <div>
+      <div style="font-size: 12px; color: #3b444c; font-weight: 600;">Title</div>
+      <div>{{webhookData.data.title}}</div>
+    </div>
+    <div>
+      <div style="font-size: 12px; color: #3b444c; font-weight: 600;">Git URL</div>
+      <a href="{{& webhookData.data.giturl}}" target="_blank" style="color: #0066cc;"> View</a>
+    </div>
+  </div>
+  <div style="display: grid; padding: 20px; grid-template-columns: 50% 50%;">
+    <div>
+      <div style="font-size: 12px; color: #3b444c; font-weight: 600;">Source branch</div>
+      <div>{{webhookData.data.sourcebranchname}}</div>
+    </div>
+    <div>
+      <div style="font-size: 12px; color: #3b444c; font-weight: 600;"> Source Commit</div>
+      <a href="{{& webhookData.data.sourcecheckoutlink}}" target="_blank" style="color: #0066cc;"> {{webhookData.data.sourcecheckout}}</a>
+    </div>
+  </div>
+  <div style="display: grid; padding: 20px; grid-template-columns: 50% 50%;">
+    <div>
+      <div style="font-size: 12px; color: #3b444c; font-weight: 600;">Target Branch</div>
+      <div>{{{webhookData.data.targetbranchname}}</div>
+    </div>
+    <div>
+      <div style="font-size: 12px; color: #3b444c; font-weight: 600;"> Target Commi</div>
+      <a href="{{& webhookData.data.targetcheckoutlink}}" target="_blank" style="color: #0066cc;"> {{webhookData.data.sourcecheckout}}</a>
+    </div>
+  </div>
+  {{/webhookData.mergedType}}
+  {{^webhookData.mergedType}}
+  <div style="font-size: 12px; color: #3b444c; font-weight: 600;">Target Checkout</div>
+   <div>{{webhookData.data.targetcheckout}}</div>
+   {{/webhookData.mergedType}}
+   {{/webhookType}}
+   {{/ciMaterials}}
+
     <!-- Notification footer -->
     <div
       style="display: flex; justify-content: space-between; border-top: 1px solid #f2f4f7; padding: 20px;  align-items: center;">
       <div style="display: flex; align-items: center; line-height: 16px;">
-
-        <a href="" target="_blank" style=" cursor: pointer; text-decoration: none; padding-right: 20px;">
-          <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="20"
-            viewBox="0 0 24 24">
-            <defs>
-              <path id="prefix__a"
-                d="M12 2c5.523 0 10 4.477 10 10 0 4.955-3.604 9.068-8.333 9.862V14.97H16l.444-2.897h-2.779v-1.88c0-.791.388-1.564 1.633-1.564h1.264V6.163s-1.147-.196-2.243-.196c-2.288 0-3.784 1.387-3.784 3.898v2.208H7.992v2.897h2.544v6.923C5.705 21.185 2 17.025 2 12 2 6.477 6.477 2 12 2z" />
-            </defs>
-            <g fill="none" fill-rule="evenodd">
-              <path d="M0 0H24V24H0z" />
-              <use fill="#959BA1" fill-rule="nonzero" xlink:href="#prefix__a" />
-            </g>
-          </svg>
+        <a href="https://twitter.com/DevtronL" target="_blank" style=" cursor: pointer; text-decoration: none; padding-right: 20px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19.9525 8.04571C19.9647 8.22203 19.9647 8.39834 19.9647 8.57628C19.9647 13.9982 15.8371 20.2513 8.28966 20.2513V20.248C6.06013 20.2513 3.8769 19.6126 2 18.4085C2.32419 18.4475 2.65001 18.467 2.97664 18.4678C4.82429 18.4694 6.61913 17.8495 8.07272 16.7079C6.31688 16.6746 4.77717 15.5298 4.23928 13.8584C4.85436 13.9771 5.48812 13.9527 6.09181 13.7877C4.17753 13.401 2.80033 11.7191 2.80033 9.7658V9.7138C3.37071 10.0315 4.00934 10.2078 4.6626 10.2273C2.85964 9.02235 2.30388 6.62382 3.39265 4.74854C5.47593 7.31201 8.54967 8.87041 11.8493 9.03535C11.5186 7.61021 11.9703 6.11681 13.0364 5.11498C14.689 3.56146 17.2882 3.64108 18.8418 5.29292C19.7607 5.11173 20.6415 4.77454 21.4475 4.29678C21.1412 5.24661 20.5001 6.05343 19.6437 6.56613C20.457 6.47025 21.2517 6.2525 22 5.92018C21.4491 6.74569 20.7552 7.46477 19.9525 8.04571Z" fill="#1D9BF0"/>
+            </svg>
         </a>
         <a href="https://www.linkedin.com/company/devtron-labs/mycompany/" target="_blank"
           style=" cursor: pointer; text-decoration: none; padding-right: 20px;">
@@ -150,15 +187,18 @@
           style="color: #000a14; cursor: pointer; text-decoration: none; padding-right: 20px;">
           Blog
         </a>
-        <a href="https://devtron.ai/" target="_blank" style="color: #000a14; cursor: pointer; text-decoration: none;">
+        <a href="https://devtron.ai/" target="_blank" style="color: #000a14; cursor: pointer; text-decoration: none;padding-right: 20px;">
           Website
+        </a>
+        <a href="https://discord.com/invite/jsRG5qx2gp" target="_blank" style="color: #000a14; cursor: pointer; text-decoration: none;">
+          Support
         </a>
       </div>
       <div style="color: #767d84">
         © Devtron Labs 2020
       </div>
     </div>
-
+  </div>
   </div>
 
 </body>
