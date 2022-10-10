@@ -14,9 +14,10 @@
 <body>
   <div style="background-color: #f2f4f7; height: 100vh;">
     <div class="notification-wrapper"
-      style="border: 1px solid #f2f4f7; max-width: 600px; margin: auto;color: #000a14; font-family: Open Sans; font-size: 14px; background-color: #fff;">
+      style="max-height: 100vh;
+      overflow: scroll; border: 1px solid #f2f4f7; max-width: 600px; margin: auto;color: #000a14; font-family: Open Sans; font-size: 14px; background-color: #fff;">
       <div style="padding: 20px; border-bottom: 1px solid #f2f4f7;">
-        <img style="max-width: 122px;" src="../../../assets/image/ic-nav-logo@2x.png" alt="ci-triggered" />
+        <img style="max-width: 122px;" src="https://devtron-public-asset.s3.us-east-2.amazonaws.com/images/devtron/devtron-logo.png" alt="ci-triggered" />
       </div>
 
     <!-- Status banner -->
@@ -85,12 +86,12 @@
           </svg>
         </div>
         <div style="display: flex;">
-          {{#buildHistoryLink}}<a href="{{& buildHistoryLink }}"target="_blank" style=" font-size: 12px; color: #fff; border-radius: 4px;
+          {{#deploymentHistoryLink}}<a href="{{& deploymentHistoryLink}}"target="_blank" style=" font-size: 12px; color: #fff; border-radius: 4px;
           background: #0066cc; padding-top: 10px; padding-bottom: 10px; padding-right: 12px; padding-left: 10px; cursor: pointer; text-decoration: none;
-          font-weight: 600;">View Pipeline</a>{{/buildHistoryLink}}
-          <a href="" target="_blank" style="margin-left: 8px; font-size: 12px; color: #3b444c; border-radius: 4px;border: solid 1px #d0d4d9;
+          font-weight: 600;">View Pipeline</a>{{/deploymentHistoryLink}}
+          {{#appDetailsLink}}<a href="{{& appDetailsLink}}" target="_blank" style="margin-left: 8px; font-size: 12px; color: #3b444c; border-radius: 4px;border: solid 1px #d0d4d9;
           background: #fff; padding-top: 10px; padding-bottom: 10px; padding-right: 12px; padding-left: 10px; cursor: pointer; text-decoration: none;
-          font-weight: 600;">App details</a>
+          font-weight: 600;">App details</a>{{/appDetailsLink}}
         </div>
       </div>
     </div>
