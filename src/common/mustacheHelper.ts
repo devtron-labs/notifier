@@ -134,6 +134,7 @@ export class MustacheHelper {
           devtronCiPipelineId: event.pipelineId,
           devtronTriggeredByEmail: event.payload.triggeredBy,
           devtronContainerImageTag: event.payload.dockerImageUrl,
+          devtronApprovedByEmail: event.payload.approvedByEmail,
         };
     }
 
