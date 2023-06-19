@@ -86,10 +86,12 @@ export class WebhookService implements Handler{
    
     public async sendNotification(event: Event, webhookUrl: string, template: string, headers?: Record<string, string>) {
         try {
+          this.logger.info('before parse',event)
           let parsedEvent = this.mh.parseEventForWebhook(event as Event);
+          this.logger.info('after parse',parsedEvent)
           let jsons = Mustache.render(template, parsedEvent);
           let j = JSON.parse(jsons);
-
+          this.logger.info('after mustache',j)
           const headerConfig = { headers: {} };
 
           if (headers) {

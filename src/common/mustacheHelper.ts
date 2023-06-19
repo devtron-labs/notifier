@@ -116,6 +116,7 @@ export class MustacheHelper {
         }
     }
     parseEventForWebhook(event: Event ) :WebhookParsedEvent {
+        console.log(event)
         let eventType: string;
         if (event.eventTypeId === 1) {
           eventType = "trigger";
