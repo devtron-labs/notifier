@@ -14,8 +14,8 @@ export class WebhookConfig {
   @Column({ type: 'jsonb', nullable: true })
   header: Record<string, string>;
 
-  @Column({ type: 'jsonb', nullable: true })
-  payload: Record<string, string>;
+  @Column({ type: 'bytea', nullable: true })
+  payload: Buffer;
 
   @Column()
   description: string;
