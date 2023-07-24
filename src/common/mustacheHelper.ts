@@ -38,6 +38,7 @@ export class MustacheHelper {
         let baseURL = event.baseUrl;
         let material = event.payload.material;
         let ciMaterials;
+        //here eventTypeId = 4 describes request for approval node event
         if (event.eventTypeId!==4){
         ciMaterials = material.ciMaterials ? material.ciMaterials.map((ci) => {
             if (material && material.gitTriggers && material.gitTriggers[ci.id]) {
