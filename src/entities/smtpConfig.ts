@@ -31,7 +31,7 @@ export class SMTPConfig {
     description: string;
 
     @Column()
-    default: string;
+    default: boolean;
 
     @Column()
     deleted: boolean;
