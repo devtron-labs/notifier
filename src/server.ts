@@ -1,7 +1,7 @@
 import express from 'express';
 import { NotificationService, Event, Handler } from './notification/service/notificationService'
 import "reflect-metadata"
-import { ConnectionOptions, createConnection, getConnectionOptions } from "typeorm"
+import {ConnectionOptions, createConnection, getConnectionOptions, getManager} from "typeorm"
 import { NotificationSettingsRepository } from "./repository/notificationSettingsRepository"
 import { SlackService } from './destination/destinationHandlers/slackHandler'
 import { SESService } from './destination/destinationHandlers/sesHandler'
@@ -27,6 +27,7 @@ import { MustacheHelper } from './common/mustacheHelper';
 import { WebhookConfigRepository } from './repository/webhookConfigRepository';
 import { WebhookService } from './destination/destinationHandlers/webhookHandler';
 import { WebhookConfig } from './entities/webhookconfig';
+import * as process from "process";
 const app = express();
 app.use(express.json());
 
@@ -87,14 +88,28 @@ createConnection(dbOptions).then(async connection => {
     logger.info("Connected to DB")
 }).catch(error => {
     logger.error("TypeORM connection error: ", error);
+    logger.error("shutting down notifier due to un-successful database connection...")
+    process.exit(1)
 });
 
 app.get('/', (req, res) => res.send('Welcome to notifier Notifier!'))
-app.get('/health', (req, res) => res.send({ "status": "OK", "time": new Date() }))
+
+app.get('/health', (req, res) =>{
+    // check all the dependencies health checks
+    // currently only checking database connection
+    getManager().connection.query("SELECT 1").then(async => {
+        res.status(200).send("healthy")
+    }).catch(error => {
+        logger.error("health check with db failed with error : ",error)
+        res.status(500).send("unhealthy")
+    })
+})
+
 app.get('/test', (req, res) => {
     send();
     res.send('Test!');
 })
+
 app.post('/notify', (req, res) => {
     logger.info("notifications Received")
     notificationService.sendNotification(req.body)
