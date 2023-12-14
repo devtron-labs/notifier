@@ -1,5 +1,5 @@
 FROM node AS builder
-RUN apt update
+RUN apt update && apt install -y apt-transport-https
 
 WORKDIR /app
 COPY package.json .
@@ -10,7 +10,7 @@ RUN  yarn build-ts
 
 
 FROM node:14.2.0
-RUN apt update
+RUN apt update && apt install -y apt-transport-https
 
 ENV TINI_VERSION v0.18.0
 RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && echo $arch && wget https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${arch} -O /tini
