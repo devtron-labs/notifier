@@ -9,7 +9,7 @@ COPY /.  .
 RUN  yarn build-ts
 
 
-FROM node:14.2.0
+FROM node:14
 RUN echo "deb http://archive.debian.org/debian stretch main contrib non-free" > /etc/apt/sources.list
 RUN apt update
 
