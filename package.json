@@ -36,7 +36,7 @@
         "notifme-sdk": "^1.9.3",
         "pg": "^8.2.1",
         "reflect-metadata": "^0.1.13",
-        "typeorm": "^0.2.24",
+        "typeorm": "^0.3.17",
         "winston": "^3.2.1"
     }
 }
