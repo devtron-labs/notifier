@@ -168,11 +168,12 @@ export class SESService implements Handler {
             }else if(event.eventTypeId===5){
                 let commentDisplayStyle = (event.payload.protectConfigComment === "") ? 'none' : 'inline';
                 json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle });
-            }else{
+            }
+            else{
                 json = Mustache.render(template, parsedEvent)
             }
-           
-            
+
+
             const res = await sdk.send(
                 {
                     email: JSON.parse(json)

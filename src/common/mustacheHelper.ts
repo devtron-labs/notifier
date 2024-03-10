@@ -34,7 +34,7 @@ export class MustacheHelper {
         return "NA"
     }
 
-    parseEvent(event: Event, isSlackNotification?: boolean): ParsedCIEvent | ParsedCDEvent | ParseApprovalEvent | ParseConfigApprovalEvent{
+    parseEvent(event: Event, isSlackNotification?: boolean): ParsedCIEvent | ParsedCDEvent | ParseApprovalEvent | ParseConfigApprovalEvent | ParseArtifactPromotionEvent{
         let baseURL = event.baseUrl;
         let material = event.payload.material;
         let ciMaterials;
@@ -162,7 +162,27 @@ export class MustacheHelper {
                 protectConfigLink:protectConfigLink,
                 approvalLink:approvalLink,
             }
-            
+        }
+        else if (event.eventTypeId == 6 ){
+
+            let artifactPromotionRequestViewLink : string   = event.payload?.artifactPromotionRequestViewLink
+            let artifactPromotionApprovalLink = event.payload?.artifactPromotionApprovalLink
+            let imageTagNames = event.payload?.imageTagNames
+            let imageComment = event.payload?.imageComment
+            let imagePromotionSource = event.payload?.promotionArtifactSource
+            let envName  = event.payload?.envName
+
+            return {
+                eventTime: timestamp,
+                triggeredBy: event.payload.triggeredBy || "NA",
+                appName: event.payload.appName || "NA",
+                envName: event.payload.envName || envName,
+                tags: imageTagNames,
+                comment: imageComment,
+                promotionArtifactSource: imagePromotionSource,
+                artifactPromotionRequestViewLink:artifactPromotionRequestViewLink,
+                artifactPromotionApprovalLink:artifactPromotionApprovalLink,
+            }
 
         }
     }
@@ -284,7 +304,18 @@ interface ParseConfigApprovalEvent{
     protectConfigLink?:string;
     approvalLink?:string;
 }
- 
+
+interface ParseArtifactPromotionEvent {
+    eventTime: number | string;
+    triggeredBy: string;
+    appName: string;
+    envName: string;
+    tags?:string[];
+    comment?:string;
+    artifactPromotionRequestViewLink?: string
+    artifactPromotionApprovalLink?: string
+    promotionArtifactSource?: string
+}
 
 interface ParsedCDEvent {
     eventTime: number | string;
