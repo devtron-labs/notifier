@@ -165,8 +165,8 @@ export class MustacheHelper {
         }
         else if (event.eventTypeId == 6 ){
 
-            let artifactPromotionRequestViewLink : string   = event.payload?.artifactPromotionRequestViewLink
-            let artifactPromotionApprovalLink = event.payload?.artifactPromotionApprovalLink
+            let artifactPromotionRequestViewLink : string   = `${baseURL}${event.payload?.artifactPromotionRequestViewLink}`
+            let artifactPromotionApprovalLink = `${baseURL}${event.payload?.artifactPromotionApprovalLink}`
             let imageTagNames = event.payload?.imageTagNames
             let imageComment = event.payload?.imageComment
             let imagePromotionSource = event.payload?.promotionArtifactSource
