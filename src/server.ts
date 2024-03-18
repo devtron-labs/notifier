@@ -75,7 +75,6 @@ const pwd: string = process.env.DB_PWD;
 const db: string = process.env.DB;
 
 let dbOptions: ConnectionOptions = {
-    type: "postgres",
     host: dbHost,
     port: dbPort,
     username: user,

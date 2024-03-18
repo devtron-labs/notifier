@@ -38,7 +38,7 @@ export class MustacheHelper {
         let baseURL = event.baseUrl;
         let material = event.payload.material;
         let ciMaterials;
-        if (event.eventTypeId!==4 && event.eventTypeId!==5){
+        if (event.eventTypeId!==4 && event.eventTypeId!==5 && event.eventTypeId!=6 ){
         ciMaterials = material.ciMaterials ? material.ciMaterials.map((ci) => {
             if (material && material.gitTriggers && material.gitTriggers[ci.id]) {
                 let trigger = material.gitTriggers[ci.id];
