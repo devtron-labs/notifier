@@ -103,7 +103,7 @@ export class MustacheHelper {
             if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.indexOf(":");
             if (baseURL && event.payload.appDetailLink) appDetailsLink = `${baseURL}${event.payload.appDetailLink}`;
             if (baseURL && event.payload.deploymentHistoryLink) deploymentHistoryLink = `${baseURL}${event.payload.deploymentHistoryLink}`;
-            if (event.payload.timeWindowComment) deploymentWindowCommentStyle ?'inline' : 'none';
+            deploymentWindowCommentStyle = event.payload.timeWindowComment ? 'inline' : 'none';
             return {
                 eventTime: timestamp,
                 triggeredBy: event.payload.triggeredBy || "NA",
