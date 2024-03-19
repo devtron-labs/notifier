@@ -3,7 +3,7 @@ import {Brackets, getManager} from "typeorm";
 
 export class NotificationSettingsRepository {
     async findByEventSource(pipelineType: string, pipelineId: number, eventTypeId: number, appId: number, envId: number, teamId: number): Promise<NotificationSettings[]> {
-        if (eventTypeId == 6){
+        if (eventTypeId == 6){//this is the case when deployment is blocked and pipeline is set to auto trigger
             eventTypeId = 3
         }
         return await getManager().getRepository(NotificationSettings).createQueryBuilder("ns")
