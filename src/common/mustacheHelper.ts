@@ -97,13 +97,13 @@ export class MustacheHelper {
             return parsedEvent
         }
         else if (event.pipelineType === "CD") {
-            let appDetailsLink, deploymentHistoryLink,deploymentWindowCommentStyle;
+            let appDetailsLink, deploymentHistoryLink;
             let index = -1;
 
             if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.indexOf(":");
             if (baseURL && event.payload.appDetailLink) appDetailsLink = `${baseURL}${event.payload.appDetailLink}`;
             if (baseURL && event.payload.deploymentHistoryLink) deploymentHistoryLink = `${baseURL}${event.payload.deploymentHistoryLink}`;
-            deploymentWindowCommentStyle = event.payload.timeWindowComment ? 'inline' : 'none';
+    
             return {
                 eventTime: timestamp,
                 triggeredBy: event.payload.triggeredBy || "NA",
@@ -116,7 +116,7 @@ export class MustacheHelper {
                 appDetailsLink: appDetailsLink,
                 deploymentHistoryLink: deploymentHistoryLink,
                 deploymentWindowComment: event.payload.timeWindowComment ?? '',
-                deploymentWindowCommentStyle:deploymentWindowCommentStyle,
+                deploymentWindowCommentStyle: event.payload.timeWindowComment ? 'inline' : 'none',
             }
         }
         else if (event.eventTypeId===4){
