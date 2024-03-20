@@ -116,7 +116,7 @@ export class MustacheHelper {
                 appDetailsLink: appDetailsLink,
                 deploymentHistoryLink: deploymentHistoryLink,
                 deploymentWindowComment: event.payload.timeWindowComment ?? '',
-                deploymentWindowCommentStyle: event.payload.timeWindowComment ? 'inline' : 'none',
+                deploymentWindowCommentStyle: event.payload.timeWindowComment ? 'block' : 'none',
             }
         }
         else if (event.eventTypeId===4){
