@@ -161,14 +161,15 @@ export class SESService implements Handler {
             parsedEvent['fromEmail'] = event.payload['fromEmail'];
             parsedEvent['toEmail'] = event.payload['toEmail'];
             let json: string
-            if(event.eventTypeId===4){
+            if(event.eventTypeId===4 || event.eventTypeId == 6){
                 let commentDisplayStyle = (event.payload.imageComment === "") ? 'none' : 'inline';
                 let tagDisplayStyle = (event.payload.imageTagNames === null) ? 'none' : 'inline';
                 json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle ,tagDisplayStyle});
             }else if(event.eventTypeId===5){
                 let commentDisplayStyle = (event.payload.protectConfigComment === "") ? 'none' : 'inline';
                 json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle });
-            }else{
+            }
+            else{
                 json = Mustache.render(template, parsedEvent)
             }
 
