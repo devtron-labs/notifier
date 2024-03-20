@@ -116,6 +116,7 @@ export class MustacheHelper {
                 appDetailsLink: appDetailsLink,
                 deploymentHistoryLink: deploymentHistoryLink,
                 deploymentWindowComment: event.payload.timeWindowComment ?? '',
+                deploymentWindowCommentStyle:deploymentWindowCommentStyle,
             }
         }
         else if (event.eventTypeId===4){
@@ -308,6 +309,7 @@ interface ParsedCDEvent {
     deploymentHistoryLink: string;
     dockerImg: string;
     deploymentWindowComment?: string;
+    deploymentWindowCommentStyle?: string;
 }
 
 class WebhookData {
