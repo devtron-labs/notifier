@@ -175,6 +175,61 @@ export class MustacheHelper {
         } else {
           eventType = "fail";
         }
+        let material = event.payload.material;
+        let ciMaterials;
+        ciMaterials = material.ciMaterials ? material.ciMaterials.map((ci) => {
+            if (material && material.gitTriggers && material.gitTriggers[ci.id]) {
+                let trigger = material.gitTriggers[ci.id];
+                let _material;
+                if (ci.type == 'WEBHOOK'){
+                    let _webhookDataInRequest = trigger.WebhookData;
+                    let _isMergedTypeWebhook = _webhookDataInRequest.EventActionType == 'merged';
+                    let _webhookData : WebhookData = {
+                        mergedType : _isMergedTypeWebhook,
+                        data: this.modifyWebhookData(_webhookDataInRequest.Data, ci.url, _isMergedTypeWebhook)
+                    }
+                    _material = {
+                        webhookType : true,
+                        webhookData: _webhookData
+                    }
+                }else{
+                    _material = {
+                        branch: ci.value || "NA",
+                        commit: trigger.Commit ? trigger.Commit.substring(0, 8) : "NA",
+                        commitLink: this.createGitCommitUrl(ci.url, trigger.Commit),
+                        webhookType : false,
+                    }
+                }
+                return _material;
+            }
+            else {
+                return {
+                    branch: "NA",
+                    commit: "NA",
+                    commitLink: "#",
+                }
+            }
+        }) : [];
+       
+         let imageScanExecutionInfo = event.payload.ImageScanExecutionInfo;
+         let vulnerabilities = imageScanExecutionInfo.vulnerabilities
+           ? imageScanExecutionInfo.vulnerabilities.map((vuln) => ({
+               CVEName: vuln.CVEName,
+               severity: vuln.Severity,
+               package: vuln.Package || undefined,
+               currentVersion: vuln.CVersion,
+               fixedVersion: vuln.FVersion,
+               permission: vuln.Permission,
+             }))
+           : [];
+
+           let severityCount = imageScanExecutionInfo.SeverityCount
+           ? {
+               high: imageScanExecutionInfo.SeverityCount.high,
+               moderate: imageScanExecutionInfo.SeverityCount.moderate,
+               low: imageScanExecutionInfo.SeverityCount.low,
+             }
+           : undefined;
         let devtronContainerImageTag='NA' ,devtronContainerImageRepo='NA';
             if (event.payload.dockerImageUrl){
                 const index = event.payload.dockerImageUrl.lastIndexOf(":");
@@ -194,6 +249,14 @@ export class MustacheHelper {
           devtronContainerImageTag:devtronContainerImageTag,
           devtronContainerImageRepo:devtronContainerImageRepo,
           devtronApprovedByEmail: event.payload.approvedByEmail,
+          ciMaterials:ciMaterials,
+          vulnerabilities:vulnerabilities,
+          SeverityCount:severityCount,
+          scannedAt:event.payload.imageScanExecutionInfo.scannedAt,
+          scannedBy:event.payload.imageScanExecutionInfo.scannedBy,
+          
+          
+
         };
     }
 
@@ -247,18 +310,40 @@ interface ParsedCIEvent {
     buildHistoryLink: string;
     failureReason?: string;
 }
-interface WebhookParsedEvent{
-    eventType?:string;
-    devtronAppId?:number;
-    devtronEnvId?:number;
-    devtronAppName?:string;
-    devtronEnvName?:string;
-    devtronCdPipelineId?:number;
-    devtronCiPipelineId?:number;
-    devtronApprovedByEmail?:string[];
-    devtronTriggeredByEmail:string;
-    devtronContainerImageTag?:string;
-    devtronContainerImageRepo?:string;
+interface WebhookParsedEvent {
+  eventType?: string;
+  devtronAppId?: number;
+  devtronEnvId?: number;
+  devtronAppName?: string;
+  devtronEnvName?: string;
+  devtronCdPipelineId?: number;
+  devtronCiPipelineId?: number;
+  devtronApprovedByEmail?: string[];
+  devtronTriggeredByEmail: string;
+  devtronContainerImageTag?: string;
+  devtronContainerImageRepo?: string;
+  scannedAt?: Date;
+  scannedBy?: string;
+  vulnerabilities?: {
+    CVEName: string;
+    severity: string;
+    package?: string;
+    currentVersion: string;
+    fixedVersion: string;
+    permission: string;
+  }[];
+  SeverityCount?: {
+    high: number;
+    moderate: number;
+    low: number;
+  };
+  ciMaterials?: {
+    branch: string;
+    commit: string;
+    commitLink: string;
+    webhookType: boolean;
+    webhookData: WebhookData;
+  }[];
 }
 interface ParseApprovalEvent{
     eventTime: number | string;
