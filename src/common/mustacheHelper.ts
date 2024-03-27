@@ -38,7 +38,7 @@ export class MustacheHelper {
         let baseURL = event.baseUrl;
         let material = event.payload.material;
         let ciMaterials;
-        if (event.eventTypeId!==4 && event.eventTypeId!==5){
+        if (event.eventTypeId!==EventType.Approval && event.eventTypeId!==EventType.ConfigApproval){
         ciMaterials = material.ciMaterials ? material.ciMaterials.map((ci) => {
             if (material && material.gitTriggers && material.gitTriggers[ci.id]) {
                 let trigger = material.gitTriggers[ci.id];
@@ -117,7 +117,7 @@ export class MustacheHelper {
                 deploymentHistoryLink: deploymentHistoryLink,
             }
         }
-        else if (event.eventTypeId===4){
+        else if (event.eventTypeId===EventType.Approval){
             let  imageTagNames,imageComment,imageLink,approvalLink;
             let index = -1;
             if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
@@ -141,7 +141,7 @@ export class MustacheHelper {
             
 
         }
-        else if (event.eventTypeId===5){
+        else if (event.eventTypeId===EventType.ConfigApproval){
             let  protectConfigFileType,protectConfigFileName,protectConfigComment,protectConfigLink,envName,approvalLink;
             if (event.payload.protectConfigFileType) protectConfigFileType = event.payload.protectConfigFileType;
             if (event.payload.protectConfigFileName) protectConfigFileName = event.payload.protectConfigFileName;
@@ -166,6 +166,38 @@ export class MustacheHelper {
 
         }
     }
+     ParseCIMaterials(material: any): ciMaterials[] {
+        return material.ciMaterials ? material.ciMaterials.map((ci: any) => {
+            const trigger = material.gitTriggers && material.gitTriggers[ci.id];
+            if (trigger) {
+                if (ci.type === 'WEBHOOK') {
+                    const webhookDataInRequest = trigger.WebhookData;
+                    const isMergedTypeWebhook = webhookDataInRequest?.EventActionType === 'merged';
+                    const webhookData: WebhookData = {
+                        mergedType: isMergedTypeWebhook,
+                        data: this.modifyWebhookData(webhookDataInRequest?.Data, ci.url, isMergedTypeWebhook)
+                    };
+                    return {
+                        webhookType: true,
+                        webhookData: webhookData
+                    };
+                } else {
+                    return {
+                        branch: ci.value || 'NA',
+                        commit: trigger.Commit ? trigger.Commit.substring(0, 8) : 'NA',
+                        commitLink: this.createGitCommitUrl(ci.url, trigger.Commit),
+                        webhookType: false,
+                    };
+                }
+            } else {
+                return {
+                    branch: 'NA',
+                    commit: 'NA',
+                    commitLink: '#',
+                };
+            }
+        }) : [];
+    }
     parseEventForWebhook(event: Event ) :WebhookParsedEvent {
         let eventType: string;
         if (event.eventTypeId === 1) {
@@ -175,6 +207,26 @@ export class MustacheHelper {
         } else {
           eventType = "fail";
         }
+        const ciMaterials = this.ParseCIMaterials(event.payload.material);
+         let imageScanExecutionInfo = event.payload.ImageScanExecutionInfo;
+         let vulnerabilities = imageScanExecutionInfo.vulnerabilities
+           ? imageScanExecutionInfo.vulnerabilities.map((vuln) => ({
+               CVEName: vuln.CVEName,
+               severity: vuln.Severity,
+               package: vuln.Package || undefined,
+               currentVersion: vuln.CVersion,
+               fixedVersion: vuln.FVersion,
+               permission: vuln.Permission,
+             }))
+           : [];
+
+           let severityCount = imageScanExecutionInfo.SeverityCount
+           ? {
+               high: imageScanExecutionInfo.SeverityCount.high,
+               moderate: imageScanExecutionInfo.SeverityCount.moderate,
+               low: imageScanExecutionInfo.SeverityCount.low,
+             }
+           : undefined;
         let devtronContainerImageTag='NA' ,devtronContainerImageRepo='NA';
             if (event.payload.dockerImageUrl){
                 const index = event.payload.dockerImageUrl.lastIndexOf(":");
@@ -194,6 +246,14 @@ export class MustacheHelper {
           devtronContainerImageTag:devtronContainerImageTag,
           devtronContainerImageRepo:devtronContainerImageRepo,
           devtronApprovedByEmail: event.payload.approvedByEmail,
+          ciMaterials:ciMaterials,
+          vulnerabilities:vulnerabilities,
+          severityCount:severityCount,
+          scannedAt:event.payload.imageScanExecutionInfo.scannedAt,
+          scannedBy:event.payload.imageScanExecutionInfo.scannedBy,
+          
+          
+
         };
     }
 
@@ -247,18 +307,42 @@ interface ParsedCIEvent {
     buildHistoryLink: string;
     failureReason?: string;
 }
-interface WebhookParsedEvent{
-    eventType?:string;
-    devtronAppId?:number;
-    devtronEnvId?:number;
-    devtronAppName?:string;
-    devtronEnvName?:string;
-    devtronCdPipelineId?:number;
-    devtronCiPipelineId?:number;
-    devtronApprovedByEmail?:string[];
-    devtronTriggeredByEmail:string;
-    devtronContainerImageTag?:string;
-    devtronContainerImageRepo?:string;
+  
+  interface ciMaterials {
+    branch: string;
+    commit: string;
+    commitLink: string;
+    webhookType: boolean;
+    webhookData: WebhookData;
+  }
+interface WebhookParsedEvent {
+  eventType?: string;
+  devtronAppId?: number;
+  devtronEnvId?: number;
+  devtronAppName?: string;
+  devtronEnvName?: string;
+  devtronCdPipelineId?: number;
+  devtronCiPipelineId?: number;
+  devtronApprovedByEmail?: string[];
+  devtronTriggeredByEmail: string;
+  devtronContainerImageTag?: string;
+  devtronContainerImageRepo?: string;
+  scannedAt?: Date;
+  scannedBy?: string;
+  vulnerabilities?: {
+    CVEName: string;
+    severity: string;
+    package?: string;
+    currentVersion: string;
+    fixedVersion: string;
+    permission: string;
+  }[];
+  severityCount?: {
+    high: number;
+    moderate: number;
+    low: number;
+  };
+  ciMaterials?: ciMaterials[]; 
 }
 interface ParseApprovalEvent{
     eventTime: number | string;

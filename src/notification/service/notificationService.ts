@@ -111,9 +111,12 @@ class NotificationService {
                               this.logger.info("no templates found for event ", event);
                               return;
                             }
-
+                            let ImageScanEvent = event.payload.imageScanExecutionInfo[setting.id]
                             for (const h of this.handlers) {
-                              if (h instanceof WebhookService) {
+                              if (h instanceof WebhookService){
+                                if  (event.eventTypeId==EventType.ImageScan){
+                                    h.handle(ImageScanEvent, newTemplateResult, setting, configsMap, destinationMap);
+                                }
                                 h.handle(event, newTemplateResult, setting, configsMap, destinationMap);
                               }
                             }
