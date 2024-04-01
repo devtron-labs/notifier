@@ -49,7 +49,9 @@ export class WebhookService implements Handler{
     }
 
     private sendAndLogNotification(event: Event, webhookTemplate: WebhookConfig, setting: NotificationSettings, p: string) {
-        this.sendNotification(event, webhookTemplate.web_hook_url, webhookTemplate.payload, webhookTemplate.header).then(result => {
+
+        const payload=typeof webhookTemplate.payload==="object"?JSON.stringify(webhookTemplate.payload) : webhookTemplate.payload
+        this.sendNotification(event, webhookTemplate.web_hook_url, payload, webhookTemplate.header).then(result => {
             this.saveNotificationEventSuccessLog(result, event, p, setting);
         }).catch((error) => {
             this.logger.error(error.message);
@@ -86,6 +88,7 @@ export class WebhookService implements Handler{
 
     public async sendNotification(event: Event, webhookUrl: string, template: string, headers?: Record<string, string>) {
         try {
+            
           let parsedEvent = this.mh.parseEventForWebhook(event as Event);
           let jsons = Mustache.render(template, parsedEvent);
           let j = JSON.parse(jsons);

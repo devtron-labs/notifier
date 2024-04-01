@@ -15,7 +15,7 @@ export class WebhookConfig {
   header: Record<string, string>;
 
   @Column({ type: 'text', nullable: true })
-  payload: string;
+  payload: string ;
 
   @Column()
   description: string;
