@@ -1,6 +1,7 @@
 import { Event } from '../notification/service/notificationService';
 import moment from 'moment-timezone';
-import e from 'express';
+import e, { json } from 'express';
+import { EVENT_TYPE } from './utils';
 
 export class MustacheHelper {
     private CD_STAGE = {
@@ -38,7 +39,7 @@ export class MustacheHelper {
         let baseURL = event.baseUrl;
         let material = event.payload.material;
         let ciMaterials;
-        if (event.eventTypeId!==EventType.Approval && event.eventTypeId!==EventType.ConfigApproval){
+        if (event.eventTypeId!==EVENT_TYPE.Approval && event.eventTypeId!==EVENT_TYPE.ConfigApproval){
         ciMaterials = material.ciMaterials ? material.ciMaterials.map((ci) => {
             if (material && material.gitTriggers && material.gitTriggers[ci.id]) {
                 let trigger = material.gitTriggers[ci.id];
@@ -117,7 +118,7 @@ export class MustacheHelper {
                 deploymentHistoryLink: deploymentHistoryLink,
             }
         }
-        else if (event.eventTypeId===EventType.Approval){
+        else if (event.eventTypeId===EVENT_TYPE.Approval){
             let  imageTagNames,imageComment,imageLink,approvalLink;
             let index = -1;
             if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
@@ -141,7 +142,7 @@ export class MustacheHelper {
             
 
         }
-        else if (event.eventTypeId===EventType.ConfigApproval){
+        else if (event.eventTypeId===EVENT_TYPE.ConfigApproval){
             let  protectConfigFileType,protectConfigFileName,protectConfigComment,protectConfigLink,envName,approvalLink;
             if (event.payload.protectConfigFileType) protectConfigFileType = event.payload.protectConfigFileType;
             if (event.payload.protectConfigFileName) protectConfigFileName = event.payload.protectConfigFileName;
@@ -166,7 +167,7 @@ export class MustacheHelper {
 
         }
     }
-     ParseCIMaterials(material: any): ciMaterials[] {
+     ParseCIMaterials(material: any): any[] {
         return material.ciMaterials ? material.ciMaterials.map((ci: any) => {
             const trigger = material.gitTriggers && material.gitTriggers[ci.id];
             if (trigger) {
@@ -207,10 +208,11 @@ export class MustacheHelper {
         } else {
           eventType = "fail";
         }
-        const ciMaterials = this.ParseCIMaterials(event.payload.material);
-         let imageScanExecutionInfo = event.payload.ImageScanExecutionInfo;
-         let vulnerabilities = imageScanExecutionInfo.vulnerabilities
-           ? imageScanExecutionInfo.vulnerabilities.map((vuln) => ({
+        let ciMaterials = this.ParseCIMaterials(event.payload.material);
+        
+         let imageScanExecutionInfo = event.payload?.ImageScanExecutionInfo;
+         let vulnerabilities = imageScanExecutionInfo?.vulnerabilities
+           ? imageScanExecutionInfo?.vulnerabilities.map((vuln) => ({
                CVEName: vuln.CVEName,
                severity: vuln.Severity,
                package: vuln.Package || undefined,
@@ -220,11 +222,11 @@ export class MustacheHelper {
              }))
            : [];
 
-           let severityCount = imageScanExecutionInfo.SeverityCount
+           let severityCount = imageScanExecutionInfo?.SeverityCount
            ? {
-               high: imageScanExecutionInfo.SeverityCount.high,
-               moderate: imageScanExecutionInfo.SeverityCount.moderate,
-               low: imageScanExecutionInfo.SeverityCount.low,
+               high: imageScanExecutionInfo?.SeverityCount.high,
+               moderate: imageScanExecutionInfo?.SeverityCount.moderate,
+               low: imageScanExecutionInfo?.SeverityCount.low,
              }
            : undefined;
         let devtronContainerImageTag='NA' ,devtronContainerImageRepo='NA';
@@ -249,8 +251,8 @@ export class MustacheHelper {
           ciMaterials:ciMaterials,
           vulnerabilities:vulnerabilities,
           severityCount:severityCount,
-          scannedAt:event.payload.imageScanExecutionInfo.scannedAt,
-          scannedBy:event.payload.imageScanExecutionInfo.scannedBy,
+          scannedAt:event.payload.imageScanExecutionInfo?.scannedAt,
+          scannedBy:event.payload.imageScanExecutionInfo?.scannedBy,
           
           
 

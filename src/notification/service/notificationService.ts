@@ -7,6 +7,8 @@ import { WebhookConfig } from "../../entities/webhookconfig";
 import { WebhookService } from "../../destination/destinationHandlers/webhookHandler";
 import { SESService } from "../../destination/destinationHandlers/sesHandler";
 import { SMTPService } from "../../destination/destinationHandlers/smtpHandler";
+import { EVENT_TYPE } from "../../common/utils";
+
 
 export interface Handler {
     handle(event: Event, templates: (NotificationTemplates[] | WebhookConfig[]), setting: NotificationSettings, configMap: Map<string, boolean>, destinationMap: Map<string, boolean>): boolean
@@ -111,10 +113,10 @@ class NotificationService {
                               this.logger.info("no templates found for event ", event);
                               return;
                             }
-                            let ImageScanEvent = event.payload.imageScanExecutionInfo[setting.id]
+                            let ImageScanEvent = event.payload.imageScanExecutionInfo?.[setting.id];
                             for (const h of this.handlers) {
                               if (h instanceof WebhookService){
-                                if  (event.eventTypeId==EventType.ImageScan){
+                                if  (event.eventTypeId===EVENT_TYPE.ImageScan){
                                     h.handle(ImageScanEvent, newTemplateResult, setting, configsMap, destinationMap);
                                 }
                                 h.handle(event, newTemplateResult, setting, configsMap, destinationMap);
