@@ -178,24 +178,24 @@ export class MustacheHelper {
                         mergedType: isMergedTypeWebhook,
                         data: this.modifyWebhookData(webhookDataInRequest?.Data, ci.url, isMergedTypeWebhook)
                     };
-                    return {
+                    return JSON.stringify({
                         webhookType: true,
                         webhookData: webhookData
-                    };
+                    });
                 } else {
-                    return {
+                    return JSON.stringify({
                         branch: ci.value || 'NA',
                         commit: trigger.Commit ? trigger.Commit.substring(0, 8) : 'NA',
                         commitLink: this.createGitCommitUrl(ci.url, trigger.Commit),
                         webhookType: false,
-                    };
+                    });
                 }
             } else {
-                return {
+                return JSON.stringify({
                     branch: 'NA',
                     commit: 'NA',
                     commitLink: '#',
-                };
+                });
             }
         }) : [];
     }
@@ -223,12 +223,12 @@ export class MustacheHelper {
            : [];
 
            let severityCount = imageScanExecutionInfo?.SeverityCount
-           ? {
-               high: imageScanExecutionInfo?.SeverityCount.high,
-               moderate: imageScanExecutionInfo?.SeverityCount.moderate,
-               low: imageScanExecutionInfo?.SeverityCount.low,
-             }
-           : undefined;
+          ? {
+              high: imageScanExecutionInfo.SeverityCount.high,
+              moderate: imageScanExecutionInfo.SeverityCount.moderate,
+              low: imageScanExecutionInfo.SeverityCount.low,
+            }
+          : null;
         let devtronContainerImageTag='NA' ,devtronContainerImageRepo='NA';
             if (event.payload.dockerImageUrl){
                 const index = event.payload.dockerImageUrl.lastIndexOf(":");

@@ -49,7 +49,8 @@ export class WebhookService implements Handler{
     }
 
     private sendAndLogNotification(event: Event, webhookTemplate: WebhookConfig, setting: NotificationSettings, p: string) {
-        this.sendNotification(event, webhookTemplate.web_hook_url, JSON.stringify(webhookTemplate.payload),webhookTemplate.header).then(result => {
+        const payload=typeof webhookTemplate.payload==="object"?JSON.stringify(webhookTemplate.payload) : webhookTemplate.payload
+        this.sendNotification(event, webhookTemplate.web_hook_url, payload,webhookTemplate.header).then(result => {
             this.saveNotificationEventSuccessLog(result, event, p, setting);
         }).catch((error) => {
             this.logger.error(error.message);
