@@ -6,7 +6,7 @@
     "scripts": {
         "start": "ts-node src/server.ts",
         "dev": "nodemon src/server.ts",
-        "dev:debug": "nodemon --inspect src/server.ts",
+        "dev:debug": "nodemon -r dotenv/config --inspect src/server.ts",
         "build-ts": "tsc",
         "serve": "node dist/server.js",
         "watch-node": "nodemon dist/server.js",

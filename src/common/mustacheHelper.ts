@@ -1,6 +1,7 @@
 import { Event } from '../notification/service/notificationService';
 import moment from 'moment-timezone';
 import e from 'express';
+import { EventType } from './utils';
 
 export class MustacheHelper {
     private CD_STAGE = {
@@ -177,24 +178,24 @@ export class MustacheHelper {
                         mergedType: isMergedTypeWebhook,
                         data: this.modifyWebhookData(webhookDataInRequest?.Data, ci.url, isMergedTypeWebhook)
                     };
-                    return {
+                    return JSON.stringify({
                         webhookType: true,
                         webhookData: webhookData
-                    };
+                    });
                 } else {
-                    return {
+                    return JSON.stringify({
                         branch: ci.value || 'NA',
                         commit: trigger.Commit ? trigger.Commit.substring(0, 8) : 'NA',
                         commitLink: this.createGitCommitUrl(ci.url, trigger.Commit),
                         webhookType: false,
-                    };
+                    });
                 }
             } else {
-                return {
+                return JSON.stringify({
                     branch: 'NA',
                     commit: 'NA',
                     commitLink: '#',
-                };
+                });
             }
         }) : [];
     }
@@ -208,8 +209,8 @@ export class MustacheHelper {
           eventType = "fail";
         }
         const ciMaterials = this.ParseCIMaterials(event.payload.material);
-         let imageScanExecutionInfo = event.payload.ImageScanExecutionInfo;
-         let vulnerabilities = imageScanExecutionInfo.vulnerabilities
+        let imageScanExecutionInfo = event.payload.ImageScanExecutionInfo;
+        let vulnerabilities = imageScanExecutionInfo?.vulnerabilities
            ? imageScanExecutionInfo.vulnerabilities.map((vuln) => ({
                CVEName: vuln.CVEName,
                severity: vuln.Severity,
@@ -220,13 +221,14 @@ export class MustacheHelper {
              }))
            : [];
 
-           let severityCount = imageScanExecutionInfo.SeverityCount
-           ? {
-               high: imageScanExecutionInfo.SeverityCount.high,
-               moderate: imageScanExecutionInfo.SeverityCount.moderate,
-               low: imageScanExecutionInfo.SeverityCount.low,
-             }
-           : undefined;
+        let severityCount = imageScanExecutionInfo?.SeverityCount
+          ? {
+              high: imageScanExecutionInfo.SeverityCount.high,
+              moderate: imageScanExecutionInfo.SeverityCount.moderate,
+              low: imageScanExecutionInfo.SeverityCount.low,
+            }
+          : null;
+        
         let devtronContainerImageTag='NA' ,devtronContainerImageRepo='NA';
             if (event.payload.dockerImageUrl){
                 const index = event.payload.dockerImageUrl.lastIndexOf(":");
@@ -249,11 +251,8 @@ export class MustacheHelper {
           ciMaterials:ciMaterials,
           vulnerabilities:vulnerabilities,
           severityCount:severityCount,
-          scannedAt:event.payload.imageScanExecutionInfo.scannedAt,
-          scannedBy:event.payload.imageScanExecutionInfo.scannedBy,
-          
-          
-
+          scannedAt:imageScanExecutionInfo?.scannedAt,
+          scannedBy:imageScanExecutionInfo?.scannedBy,
         };
     }
 

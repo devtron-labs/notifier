@@ -49,13 +49,13 @@ export class WebhookService implements Handler{
     }
 
     private sendAndLogNotification(event: Event, webhookTemplate: WebhookConfig, setting: NotificationSettings, p: string) {
-        this.sendNotification(event, webhookTemplate.web_hook_url, JSON.stringify(webhookTemplate.payload),webhookTemplate.header).then(result => {
+        this.sendNotification(event, webhookTemplate.web_hook_url, webhookTemplate.payload, webhookTemplate.header).then(result => {
             this.saveNotificationEventSuccessLog(result, event, p, setting);
         }).catch((error) => {
             this.logger.error(error.message);
             this.saveNotificationEventFailureLog(event, p, setting);
         });
-    }
+    }    
 
     private processNotification(webhookConfigId: number, event: Event, webhookTemplate: WebhookConfig, setting: NotificationSettings, p: string, webhookMap: Map<string, boolean>) {
         this.webhookConfigRepository.findByWebhookConfigId(webhookConfigId).then(config => {
