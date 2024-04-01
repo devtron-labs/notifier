@@ -35,33 +35,86 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __asyncValues = (this && this.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 var mod_1 = require("nats.deno/src/mod");
-// import * as dotenv from 'dotenv';
-// import {Subscription} from "nats";
-// import {sendNotification} from "./tests/notificationTest";
-// import {Event} from "./entities/events";
 var natsUrl = process.env.NATS_URL;
-var topicName = "NOTIFICATION_EVENT_TOPIC";
-var queueName = "NOTIFICATION_EVENT_GROUP";
-var stream = "ORCHESTRATOR";
-var consumer = "NOTIFICATION_EVENT_DURABLE";
-var nc = (0, mod_1.connect)(natsUrl);
 var PubSubServiceImpl = /** @class */ (function () {
     function PubSubServiceImpl() {
-        this.nc = yield (0, mod_1.connect)(natsUrl);
+        this.nc = (0, mod_1.connect)(natsUrl);
         this.js = this.nc.jetstream();
     }
-    PubSubServiceImpl.prototype.subscribe = function () {
+    PubSubServiceImpl.prototype.subscribe = function (callback) {
+        var _a, e_1, _b, _c;
         return __awaiter(this, void 0, void 0, function () {
-            var consumer;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.js.consumers.get("s", "cn")];
+            var consumer, messages, _d, messages_1, messages_1_1, m, event_1, e_1_1, err_1;
+            return __generator(this, function (_e) {
+                switch (_e.label) {
+                    case 0: return [4 /*yield*/, this.js.consumers.get(ORCHESTRATOR_STREAM, NOTIFICATION_EVENT_DURABLE)];
                     case 1:
-                        consumer = _a.sent();
-                        consumer.consume();
-                        return [2 /*return*/];
+                        consumer = _e.sent();
+                        _e.label = 2;
+                    case 2:
+                        if (!true) return [3 /*break*/, 19];
+                        console.log("waiting for messages");
+                        return [4 /*yield*/, consumer.consume()];
+                    case 3:
+                        messages = _e.sent();
+                        _e.label = 4;
+                    case 4:
+                        _e.trys.push([4, 17, , 18]);
+                        _e.label = 5;
+                    case 5:
+                        _e.trys.push([5, 10, 11, 16]);
+                        _d = true, messages_1 = (e_1 = void 0, __asyncValues(messages));
+                        _e.label = 6;
+                    case 6: return [4 /*yield*/, messages_1.next()];
+                    case 7:
+                        if (!(messages_1_1 = _e.sent(), _a = messages_1_1.done, !_a)) return [3 /*break*/, 9];
+                        _c = messages_1_1.value;
+                        _d = false;
+                        m = _c;
+                        console.log(m.seq);
+                        event_1 = {
+                            appId: 0, envId: 0, eventTime: "", eventTypeId: 0, pipelineId: 0, teamId: 0,
+                            payload: m.data
+                        };
+                        callback(event_1);
+                        m.ack();
+                        _e.label = 8;
+                    case 8:
+                        _d = true;
+                        return [3 /*break*/, 6];
+                    case 9: return [3 /*break*/, 16];
+                    case 10:
+                        e_1_1 = _e.sent();
+                        e_1 = { error: e_1_1 };
+                        return [3 /*break*/, 16];
+                    case 11:
+                        _e.trys.push([11, , 14, 15]);
+                        if (!(!_d && !_a && (_b = messages_1.return))) return [3 /*break*/, 13];
+                        return [4 /*yield*/, _b.call(messages_1)];
+                    case 12:
+                        _e.sent();
+                        _e.label = 13;
+                    case 13: return [3 /*break*/, 15];
+                    case 14:
+                        if (e_1) throw e_1.error;
+                        return [7 /*endfinally*/];
+                    case 15: return [7 /*endfinally*/];
+                    case 16: return [3 /*break*/, 18];
+                    case 17:
+                        err_1 = _e.sent();
+                        console.log("consume failed: ".concat(err_1));
+                        return [3 /*break*/, 18];
+                    case 18: return [3 /*break*/, 2];
+                    case 19: return [2 /*return*/];
                 }
             });
         });

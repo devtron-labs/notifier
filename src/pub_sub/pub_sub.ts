@@ -43,7 +43,7 @@ import {NotificationSettingsRepository} from "../repository/notificationSettings
 import {NotificationTemplatesRepository} from "../repository/templatesRepository";
 const natsUrl = process.env.NATS_URL;
 // const nc =  connect(natsUrl);
-let notificationService = new NotificationService(new EventRepository(), new NotificationSettingsRepository(), new NotificationTemplatesRepository(), handlers, logger)
+// let notificationService = new NotificationService(new EventRepository(), new NotificationSettingsRepository(), new NotificationTemplatesRepository(), handlers, logger)
 
 interface PubSubService{
     subscribe(callback :(event :Event)=>void):void
@@ -69,7 +69,7 @@ class  PubSubServiceImpl implements PubSubService {
                 for await (const m of messages) {
                     console.log(m.seq);
                      const event:Event={
-                         appId: 0, envId: 0, eventTime: "", eventTypeId: 0, pipelineId: 0, teamId: 0,
+                         appId:0, envId: 0, eventTime: "", eventTypeId: 0, pipelineId: 0, teamId: 0,
                          payload:m.data
                      }
                      callback(event)
