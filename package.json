@@ -34,11 +34,13 @@
         "json-rules-engine": "^2.3.6",
         "moment-timezone": "^0.5.31",
         "mustache": "^3.0.1",
-        "nats.deno": "nats-io/nats.deno",
         "notifme-sdk": "^1.14.1",
         "pg": "^8.2.1",
         "reflect-metadata": "^0.1.13",
         "typeorm": "0.3.17",
         "winston": "^3.2.1"
+    },
+    "resolutions": {
+        "@types/mime": "3.0.4"
     }
 }
