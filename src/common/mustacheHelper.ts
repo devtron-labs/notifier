@@ -167,7 +167,7 @@ export class MustacheHelper {
 
         }
     }
-     ParseCIMaterials(material: any): any[] {
+     ParseCIMaterials(material: any): ciMaterials[] {
         return material.ciMaterials ? material.ciMaterials.map((ci: any) => {
             const trigger = material.gitTriggers && material.gitTriggers[ci.id];
             if (trigger) {
@@ -178,24 +178,24 @@ export class MustacheHelper {
                         mergedType: isMergedTypeWebhook,
                         data: this.modifyWebhookData(webhookDataInRequest?.Data, ci.url, isMergedTypeWebhook)
                     };
-                    return JSON.stringify({
+                    return {
                         webhookType: true,
                         webhookData: webhookData
-                    });
+                    };
                 } else {
-                    return JSON.stringify({
+                    return {
                         branch: ci.value || 'NA',
                         commit: trigger.Commit ? trigger.Commit.substring(0, 8) : 'NA',
                         commitLink: this.createGitCommitUrl(ci.url, trigger.Commit),
                         webhookType: false,
-                    });
+                    };
                 }
             } else {
-                return JSON.stringify({
+                return {
                     branch: 'NA',
                     commit: 'NA',
                     commitLink: '#',
-                });
+                };
             }
         }) : [];
     }
@@ -205,30 +205,19 @@ export class MustacheHelper {
           eventType = "trigger";
         } else if (event.eventTypeId === 2) {
           eventType = "success";
-        } else {
+        } else if (event.eventTypeId === 3){
           eventType = "fail";
         }
-        let ciMaterials = this.ParseCIMaterials(event.payload.material);
-        
-         let imageScanExecutionInfo = event.payload?.ImageScanExecutionInfo;
-         let vulnerabilities = imageScanExecutionInfo?.vulnerabilities
-           ? imageScanExecutionInfo?.vulnerabilities.map((vuln) => ({
-               CVEName: vuln.CVEName,
-               severity: vuln.Severity,
-               package: vuln.Package || undefined,
-               currentVersion: vuln.CVersion,
-               fixedVersion: vuln.FVersion,
-               permission: vuln.Permission,
-             }))
-           : [];
-
-           let severityCount = imageScanExecutionInfo?.SeverityCount
-          ? {
-              high: imageScanExecutionInfo.SeverityCount.high,
-              moderate: imageScanExecutionInfo.SeverityCount.moderate,
-              low: imageScanExecutionInfo.SeverityCount.low,
-            }
-          : null;
+        let baseURL = event.baseUrl;
+        let buildHistoryLink,appDetailsLink;
+            if (baseURL && event.payload.buildHistoryLink) buildHistoryLink = `${baseURL}${event.payload.buildHistoryLink}`;
+            if (baseURL && event.payload.appDetailLink) appDetailsLink = `${baseURL}${event.payload.appDetailLink}`;
+        let ciMaterials:ciMaterials[] = this.ParseCIMaterials(event.payload.material);
+        this.defineArrayProperties(ciMaterials);
+         let imageScanExecutionInfo = event.payload?.imageScanExecutionInfo;
+        let vulnerabilities = this.mapVulnerabilities(imageScanExecutionInfo);
+        this.defineArrayProperties(vulnerabilities);
+        let severityCount=this.mapSeverityCount(imageScanExecutionInfo);
         let devtronContainerImageTag='NA' ,devtronContainerImageRepo='NA';
             if (event.payload.dockerImageUrl){
                 const index = event.payload.dockerImageUrl.lastIndexOf(":");
@@ -253,11 +242,59 @@ export class MustacheHelper {
           severityCount:severityCount,
           scannedAt:event.payload.imageScanExecutionInfo?.scannedAt,
           scannedBy:event.payload.imageScanExecutionInfo?.scannedBy,
+          buildHistoryLink: buildHistoryLink,
+          appDetailsLink: appDetailsLink,
           
           
 
         };
     }
+    mapSeverityCount(imageScanExecutionInfo:any):severityCount{
+        if (imageScanExecutionInfo && imageScanExecutionInfo.severityCount){
+
+            return {
+                high: imageScanExecutionInfo.severityCount.high,
+                moderate: imageScanExecutionInfo.severityCount.moderate,
+                low: imageScanExecutionInfo.severityCount.low,
+              }
+                
+            } else{
+                return null;
+            }
+    }
+     mapVulnerabilities(imageScanExecutionInfo: any): vulnerability[] {
+        if (imageScanExecutionInfo && imageScanExecutionInfo.vulnerabilities) {
+            return imageScanExecutionInfo.vulnerabilities.map((vuln: any) => ({
+                CVEName: vuln.CVEName,
+                severity: vuln.Severity,
+                package: vuln.Package || undefined,
+                currentVersion: vuln.CVersion,
+                fixedVersion: vuln.FVersion,
+                permission: vuln.Permission,
+            }));
+        } else {
+            return [];
+        }
+    }
+     defineArrayProperties<T>(array: T[]): void {
+        if (typeof array!=="object"){
+            return
+        }
+        Object.defineProperty(array, 'getAll', {
+            get: function() {
+                return array.map(item => JSON.stringify(item));
+            }
+        });
+    
+        array.forEach((item, index) => {
+            Object.defineProperty(item, 'isLastIndex', {
+                get: function() {
+                    return index === array.length - 1;
+                }
+            });
+        });
+    }
+    
 
     modifyWebhookData (webhookDataMap: any, gitUrl : string, isMergedTypeWebhook : boolean) : any {
 
@@ -317,6 +354,19 @@ interface ParsedCIEvent {
     webhookType: boolean;
     webhookData: WebhookData;
   }
+  interface vulnerability {
+    CVEName: string;
+    severity: string;
+    package?: string;
+    currentVersion: string;
+    fixedVersion: string;
+    permission: string;
+}
+interface severityCount{
+    high: number;
+    moderate: number;
+    low: number;
+  };
 interface WebhookParsedEvent {
   eventType?: string;
   devtronAppId?: number;
@@ -331,20 +381,11 @@ interface WebhookParsedEvent {
   devtronContainerImageRepo?: string;
   scannedAt?: Date;
   scannedBy?: string;
-  vulnerabilities?: {
-    CVEName: string;
-    severity: string;
-    package?: string;
-    currentVersion: string;
-    fixedVersion: string;
-    permission: string;
-  }[];
-  severityCount?: {
-    high: number;
-    moderate: number;
-    low: number;
-  };
+  vulnerabilities?: vulnerability[];
+  severityCount?: severityCount;
   ciMaterials?: ciMaterials[]; 
+  buildHistoryLink?: string;
+  appDetailsLink?: string;
 }
 interface ParseApprovalEvent{
     eventTime: number | string;

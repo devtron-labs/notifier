@@ -113,7 +113,8 @@ class NotificationService {
                               this.logger.info("no templates found for event ", event);
                               return;
                             }
-                            let ImageScanEvent = event.payload.imageScanExecutionInfo?.[setting.id];
+                            let ImageScanEvent = JSON.parse(JSON.stringify(event));
+                            ImageScanEvent.payload.imageScanExecutionInfo= JSON.parse(JSON.stringify(event.payload.imageScanExecutionInfo?.[setting.id]));
                             for (const h of this.handlers) {
                               if (h instanceof WebhookService){
                                 if  (event.eventTypeId===EVENT_TYPE.ImageScan){
