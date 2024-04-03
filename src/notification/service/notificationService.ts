@@ -114,9 +114,9 @@ class NotificationService {
                               return;
                             }
                             
-                            let ImageScanEvent = structuredClone(event);
+                            let ImageScanEvent = JSON.parse(JSON.stringify(event));
                             if (!!event.payload.imageScanExecutionInfo){
-                                ImageScanEvent.payload.imageScanExecutionInfo = structuredClone(event.payload.imageScanExecutionInfo?.[setting.id] ?? {});
+                                ImageScanEvent.payload.imageScanExecutionInfo = JSON.parse(JSON.stringify(event.payload.imageScanExecutionInfo[setting.id] ?? {}));
                             }
                             for (const h of this.handlers) {
                               if (h instanceof WebhookService){
