@@ -85,6 +85,7 @@ class NotificationService {
             let destinationMap = new Map();
             let configsMap = new Map();
             this.logger.info("notification settings " );
+            this.logger.info(JSON.stringify(event.payload))
             this.logger.info(JSON.stringify(settingsResults))
             settingsResults.forEach((setting) => {
                 const providerObjects = setting.config
