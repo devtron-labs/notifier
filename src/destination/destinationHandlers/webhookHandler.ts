@@ -3,7 +3,7 @@ import Mustache from 'mustache';
 import Engine from 'json-rules-engine'
 import {EventLogBuilder} from "../../common/eventLogBuilder"
 import {EventLogRepository} from '../../repository/notifierEventLogRepository';
-import { WebhookConfig } from '../../entities/webhookconfig'; 
+import { WebhookConfig } from '../../entities/webhookconfig';
 import {NotificationSettings} from "../../entities/notificationSettings";
 import { WebhookConfigRepository } from '../../repository/webhookConfigRepository';
 import {MustacheHelper} from '../../common/mustacheHelper';
@@ -83,7 +83,7 @@ export class WebhookService implements Handler{
             }
         })
     }
-   
+
     public async sendNotification(event: Event, webhookUrl: string, template: string, headers?: Record<string, string>) {
         try {
           let parsedEvent = this.mh.parseEventForWebhook(event as Event);
@@ -104,8 +104,8 @@ export class WebhookService implements Handler{
           throw new Error("Unable to send notification");
         }
       }
-      
-      
+
+
 
     private saveNotificationEventSuccessLog(result: any, event: Event, p: any, setting: NotificationSettings) {
         if (result["status"] == "error") {

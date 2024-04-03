@@ -1,4 +1,4 @@
-import NotifmeSdk from 'notifme-sdk-updated'
+import NotifmeSdk from 'notifme-sdk'
 import {Event, Handler} from '../../notification/service/notificationService';
 import Mustache from 'mustache'
 import Engine from 'json-rules-engine'
@@ -171,8 +171,8 @@ export class SESService implements Handler {
             }else{
                 json = Mustache.render(template, parsedEvent)
             }
-           
-            
+
+
             const res = await sdk.send(
                 {
                     email: JSON.parse(json)

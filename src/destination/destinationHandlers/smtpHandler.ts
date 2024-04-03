@@ -1,4 +1,4 @@
-import NotifmeSdk from 'notifme-sdk-updated'
+import NotifmeSdk from 'notifme-sdk'
 import {Event, Handler} from '../../notification/service/notificationService';
 import Mustache from 'mustache'
 import Engine from 'json-rules-engine'
