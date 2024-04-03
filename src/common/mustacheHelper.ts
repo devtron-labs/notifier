@@ -213,10 +213,10 @@ export class MustacheHelper {
             if (baseURL && event.payload.buildHistoryLink) buildHistoryLink = `${baseURL}${event.payload.buildHistoryLink}`;
             if (baseURL && event.payload.appDetailLink) appDetailsLink = `${baseURL}${event.payload.appDetailLink}`;
         let ciMaterials:ciMaterials[] = this.ParseCIMaterials(event.payload.material);
-        this.defineArrayProperties(ciMaterials);
+        this.defineArrayProperties<ciMaterials>(ciMaterials);
          let imageScanExecutionInfo = event.payload?.imageScanExecutionInfo;
-        let vulnerabilities = this.mapVulnerabilities(imageScanExecutionInfo);
-        this.defineArrayProperties(vulnerabilities);
+        let vulnerabilities:vulnerability[] = this.mapVulnerabilities(imageScanExecutionInfo);
+        this.defineArrayProperties<vulnerability>(vulnerabilities);
         let severityCount=this.mapSeverityCount(imageScanExecutionInfo);
         let devtronContainerImageTag='NA' ,devtronContainerImageRepo='NA';
             if (event.payload.dockerImageUrl){
@@ -265,12 +265,12 @@ export class MustacheHelper {
      mapVulnerabilities(imageScanExecutionInfo: any): vulnerability[] {
         if (imageScanExecutionInfo && imageScanExecutionInfo.vulnerabilities) {
             return imageScanExecutionInfo.vulnerabilities.map((vuln: any) => ({
-                CVEName: vuln.CVEName,
-                severity: vuln.Severity,
-                package: vuln.Package || undefined,
-                currentVersion: vuln.CVersion,
-                fixedVersion: vuln.FVersion,
-                permission: vuln.Permission,
+                CVEName: vuln.cveName,
+                severity: vuln.severity,
+                package: vuln.package || undefined,
+                currentVersion: vuln.currentVersion,
+                fixedVersion: vuln.fixedVersion,
+                permission: vuln.permission,
             }));
         } else {
             return [];
