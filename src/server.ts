@@ -31,8 +31,6 @@ import * as process from "process";
 import bodyParser from 'body-parser';
 const app = express();
 app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
-
 
 let logger = winston.createLogger({
     level: 'info',
