@@ -1,7 +1,7 @@
 import { Event } from '../notification/service/notificationService';
 import moment from 'moment-timezone';
 import e, { json } from 'express';
-import { EVENT_TYPE } from './utils';
+import { EVENT_TYPE } from "./types";
 import { ciMaterials ,ParsedCIEvent,vulnerability,severityCount,WebhookParsedEvent,ParseApprovalEvent,ParseConfigApprovalEvent,ParsedCDEvent} from './types';
 export class MustacheHelper {
     private CD_STAGE = {

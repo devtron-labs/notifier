@@ -7,7 +7,7 @@ import { WebhookConfig } from "../../entities/webhookconfig";
 import { WebhookService } from "../../destination/destinationHandlers/webhookHandler";
 import { SESService } from "../../destination/destinationHandlers/sesHandler";
 import { SMTPService } from "../../destination/destinationHandlers/smtpHandler";
-import { EVENT_TYPE } from "../../common/utils";
+import { EVENT_TYPE } from "../../common/types";
 
 
 export interface Handler {
