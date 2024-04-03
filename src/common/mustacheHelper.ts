@@ -2,7 +2,7 @@ import { Event } from '../notification/service/notificationService';
 import moment from 'moment-timezone';
 import e, { json } from 'express';
 import { EVENT_TYPE } from './utils';
-
+import { ciMaterials ,ParsedCIEvent,vulnerability,severityCount,WebhookParsedEvent,ParseApprovalEvent,ParseConfigApprovalEvent,ParsedCDEvent} from './types';
 export class MustacheHelper {
     private CD_STAGE = {
         DEPLOY: "Deployment",
@@ -201,11 +201,11 @@ export class MustacheHelper {
     }
     parseEventForWebhook(event: Event ) :WebhookParsedEvent {
         let eventType: string;
-        if (event.eventTypeId === 1) {
+        if (event.eventTypeId === EVENT_TYPE.Trigger) {
           eventType = "trigger";
-        } else if (event.eventTypeId === 2) {
+        } else if (event.eventTypeId === EVENT_TYPE.Success) {
           eventType = "success";
-        } else if (event.eventTypeId === 3){
+        } else if (event.eventTypeId === EVENT_TYPE.Fail){
           eventType = "fail";
         }
         let baseURL = event.baseUrl;
@@ -330,112 +330,8 @@ export class MustacheHelper {
     }
 }
 
-//For Slack
-interface ParsedCIEvent {
-    eventTime: number | string;
-    triggeredBy: string;
-    appName: string;
-    pipelineName: string;
-    ciMaterials: {
-        branch: string;
-        commit: string
-        commitLink: string;
-        webhookType: boolean;
-        webhookData: WebhookData;
-    }[];
-    buildHistoryLink: string;
-    failureReason?: string;
-}
-  
-  interface ciMaterials {
-    branch: string;
-    commit: string;
-    commitLink: string;
-    webhookType: boolean;
-    webhookData: WebhookData;
-  }
-  interface vulnerability {
-    CVEName: string;
-    severity: string;
-    package?: string;
-    currentVersion: string;
-    fixedVersion: string;
-    permission: string;
-}
-interface severityCount{
-    high: number;
-    moderate: number;
-    low: number;
-  };
-interface WebhookParsedEvent {
-  eventType?: string;
-  devtronAppId?: number;
-  devtronEnvId?: number;
-  devtronAppName?: string;
-  devtronEnvName?: string;
-  devtronCdPipelineId?: number;
-  devtronCiPipelineId?: number;
-  devtronApprovedByEmail?: string[];
-  devtronTriggeredByEmail: string;
-  devtronContainerImageTag?: string;
-  devtronContainerImageRepo?: string;
-  scannedAt?: Date;
-  scannedBy?: string;
-  vulnerabilities?: vulnerability[];
-  severityCount?: severityCount;
-  ciMaterials?: ciMaterials[]; 
-  buildHistoryLink?: string;
-  appDetailsLink?: string;
-}
-interface ParseApprovalEvent{
-    eventTime: number | string;
-    triggeredBy: string;
-    appName: string;
-    pipelineName: string;
-    envName: string;
-    tags?:string[];
-    comment?:string;
-    imageLink?:string;
-    imageTag: string;
-    approvalLink?:string;
-
-}
-interface ParseConfigApprovalEvent{
-    eventTime: number | string;
-    triggeredBy: string;
-    appName: string;
-    envName: string;
-    protectConfigComment?:string[];
-    protectConfigFileType:string;
-    protectConfigFileName:string;
-    protectConfigLink?:string;
-    approvalLink?:string;
-}
- 
-
-interface ParsedCDEvent {
-    eventTime: number | string;
-    triggeredBy: string;
-    appName: string;
-    pipelineName: string;
-    envName: string;
-    imageTagNames?:string[];
-    imageComment?:string;
-    imageApprovalLink?:string;
-    stage: "Pre-deployment" | "Post-deployment" | "Deployment";
-    ciMaterials: {
-        branch: string;
-        commit: string
-        commitLink: string;
-        webhookType: boolean;
-        webhookData: WebhookData;
-    }[];
-    appDetailsLink: string;
-    deploymentHistoryLink: string;
-    dockerImg: string;
-}
-
-class WebhookData {
+;
+export class WebhookData {
     mergedType : boolean;   // merged/non-merged
     data: Map<string, string>;
 }
