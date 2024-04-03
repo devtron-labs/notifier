@@ -113,7 +113,8 @@ class NotificationService {
                               this.logger.info("no templates found for event ", event);
                               return;
                             }
-                            let ImageScanEvent = JSON.parse(JSON.stringify(event));
+                            
+                            let ImageScanEvent = structuredClone(event);
                             if (!!event.payload.imageScanExecutionInfo){
                                 ImageScanEvent.payload.imageScanExecutionInfo = JSON.parse(JSON.stringify(event.payload.imageScanExecutionInfo[setting.id] ?? {}));
                             }
