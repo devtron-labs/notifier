@@ -114,10 +114,13 @@ class NotificationService {
                               return;
                             }
                             let ImageScanEvent = JSON.parse(JSON.stringify(event));
-                            ImageScanEvent.payload.imageScanExecutionInfo = JSON.parse(JSON.stringify(event.payload.imageScanExecutionInfo?.[setting.id] ?? {}));
+                            if (!!event.payload.imageScanExecutionInfo){
+                                ImageScanEvent.payload.imageScanExecutionInfo = JSON.parse(JSON.stringify(event.payload.imageScanExecutionInfo[setting.id] ?? {}));
+                            }
+                           
                             for (const h of this.handlers) {
                               if (h instanceof WebhookService){
-                                if  (event.eventTypeId===EVENT_TYPE.ImageScan){
+                                if  (event.eventTypeId===EVENT_TYPE.ImageScan && !!event.payload.imageScanExecutionInfo){
                                     h.handle(ImageScanEvent, newTemplateResult, setting, configsMap, destinationMap);
                                 }
                                 h.handle(event, newTemplateResult, setting, configsMap, destinationMap);
