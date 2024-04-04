@@ -28,15 +28,20 @@
         "@types/node": "^12.0.2",
         "@types/request": "^2.48.1",
         "axios": "1.6.8",
+        "dotenv": "^16.4.5",
         "express": "^4.16.4",
         "js-yaml": "^3.13.1",
         "json-rules-engine": "^2.3.6",
         "moment-timezone": "^0.5.31",
         "mustache": "^3.0.1",
+        "nats": "^2.10.0",
         "notifme-sdk": "^1.14.1",
         "pg": "^8.2.1",
         "reflect-metadata": "^0.1.13",
         "typeorm": "0.3.17",
         "winston": "^3.2.1"
+    },
+    "resolutions": {
+        "@types/mime": "3.0.4"
     }
 }
