@@ -13,81 +13,100 @@
  * limitations under the License.
  *
  */
-// import * as nats from "deno.land/x/nats/src/mod"
-import { connect} from "nats.deno/src/mod"
-// import connect from "nats.deno/src/mod" ;
-// import {Subscription} from "nats";
-// import {sendNotification} from "./tests/notificationTest";
-// import {Event} from "./entities/events";
-// const topicName ="NOTIFICATION_EVENT_TOPIC"
-// const queueName="NOTIFICATION_EVENT_GROUP"
-// const stream= "ORCHESTRATOR"
-// const consumer ="NOTIFICATION_EVENT_DURABLE"
-// const js = nc.jetstream();
-// const c =  js.consumers.get(stream, consumer);
-import {NatsConnection} from "nats.deno/nats-base-client/core"
-import {JetStreamClient} from "nats.deno/jetstream/types"
-import {Event} from "../notification/service/notificationService";
-import {DeliverPolicy,AckPolicy} from "nats.deno/jetstream/jsapi_types";
-// import {DeliverPolicy} from "nats.deno/jetstream/jsapi_types";
+import {connect, NatsConnection, JetStreamClient, StringCodec, createInbox} from "nats";
+import {
+    NatsConsumerConfig,
+    NatsConsumerWiseConfigMapping,
+    NatsTopic,
+    NatsTopicMapping,
+} from "./utils";
+import {ConsumerOptsBuilderImpl} from "nats/lib/nats-base-client/jsconsumeropts";
 
-const natsUrl = process.env.NATS_URL;
-// const nc =  connect(natsUrl);
-// let notificationService = new NotificationService(new EventRepository(), new NotificationSettingsRepository(), new NotificationTemplatesRepository(), handlers, logger)
+import { ConsumerUpdateConfig, JetStreamManager} from "nats/lib/nats-base-client/types";
 
-interface PubSubService{
-    subscribe(topic :string ,callback :(event :Event)=>void):void
+
+export interface PubSubService{
+    Subscribe(topic :string ,callback :(msg :string)=>void):void
+    updateConsumer(streamName : string,consumerName :string,existingConsumerInfo :ConsumerUpdateConfig):void
 }
 
-class  PubSubServiceImpl implements PubSubService {
-    private nc : NatsConnection
+
+
+export class  PubSubServiceImpl implements PubSubService {
+    private nc: NatsConnection
     private js: JetStreamClient
-    constructor() {
-        this.nc=  connect(natsUrl)
-        this.js= this.nc.jetstream()
+    private jsm: JetStreamManager
+
+
+    constructor(conn: NatsConnection,jsm:JetStreamManager) {
+        this.nc = conn
+        this.js = this.nc.jetstream()
+        this.jsm = jsm
+
+    }
+
+    // ********** Subscribe function provided by consumer
+
+    async Subscribe(topic: string, callback: (msg: string) => void) {
+        const natsTopicConfig: NatsTopic = NatsTopicMapping.get(topic)
+        const streamName = natsTopicConfig.streamName
+        const consumerName = natsTopicConfig.consumerName
+        const queueName = natsTopicConfig.queueName
+        const inbox = createInbox()
+        const consumerOptsDetails = new ConsumerOptsBuilderImpl({
+            name: consumerName,
+            deliver_subject: inbox,
+            durable_name: consumerName,
+            ack_wait: 5 * 1e9,
+            filter_subject: topic,
+
+
+        }).bindStream(streamName).deliverLast().callback((err, msg) => {
+            const msgString = getJsonString(msg.data)
+            callback(msgString)
+
+        }).queue(queueName)
+
+         //******* Getting consumer configuration
+
+        const consumerConfiguration=NatsConsumerWiseConfigMapping.get(consumerName)
+        await this.updateConsumer(streamName,consumerName,consumerConfiguration)
+
+       // ********** Creating a consumer
+        const consumerInfo =  this.jsm.consumers.add(streamName,consumerOptsDetails.getOpts());
+
+        // *********  Nats Subscribe() function
+        await this.js.subscribe(topic, consumerOptsDetails)
 
     }
 
 
-    async  subscribe( topic: string,callback :(event :Event)=>void) {
-        // create the subscription
-        // const consumer=await createConsumer(this.nc,ORCHESTRATOR_STREAM)
-        const jsm = await this.nc.jetstreamManager();
+       async updateConsumer(streamName :string , consumerName :string,consumerConfiguration :NatsConsumerConfig){
+            let updatesDetected :boolean =false
+            const existingConsumerInfo=   await this.jsm.consumers.info(streamName,consumerName)
+            if (consumerConfiguration.ack_wait>0 && existingConsumerInfo.config.ack_wait!=consumerConfiguration.ack_wait){
+                existingConsumerInfo.config.ack_wait=consumerConfiguration.ack_wait
+                updatesDetected=true
+            }
 
-        const natsTopicConfig :NatsTopic =natsTopicMapping.get(topic)
-        const streamName=natsTopicConfig.streamName
-        const consumerName=natsTopicConfig.consumerName
-        const queueName =natsTopicConfig.queueName
-        await jsm.consumers.add(streamName, {
-            durable_name:consumerName,
-            name: consumerName,
-            ack_policy:AckPolicy.Explicit,
-            deliver_policy:DeliverPolicy.Last,
-            filter_subject:topic,
-            deliver_group:queueName,
-        });
-        const consumer = await this.js.consumers.get(streamName,consumerName)
+            if (consumerConfiguration.num_replicas>0  && existingConsumerInfo.config.num_replicas){
+                existingConsumerInfo.config.num_replicas=consumerConfiguration.num_replicas
+                updatesDetected=true
+            }
 
-        while (true) {
-            console.log("waiting for messages");
-            const messages = await consumer.consume();
-            try {
-                for await (const m of messages) {
-                    console.log(m.data);
-                    const event :Event= getEventConfigMap(m.data)
-                     callback(event)
-                    m.ack();
-                }
-            } catch (err) {
-                console.log(`consume failed: ${err}`);
+            if (updatesDetected==true){
+                await  this.jsm.consumers.update(streamName,consumerName,existingConsumerInfo.config)
             }
         }
-    }
+
+
 }
-function getEventConfigMap(jsonstring :Uint8Array)  {
-    const decoder = new TextDecoder('utf-8');
-    const jsonString = JSON.stringify(decoder.decode(jsonstring));
-    const parsedObject = JSON.parse(jsonString);
-    const myObject: Event = parsedObject as Event;
-    return myObject
+
+function getJsonString(bytes :Uint8Array)  {
+    const sc = StringCodec();
+    return JSON.stringify(sc.decode(bytes));
 }
+
+
+
+
