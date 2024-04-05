@@ -5,7 +5,7 @@
     "main": "dist/server.js",
     "scripts": {
         "start": "ts-node src/server.ts",
-        "dev": "nodemon src/server.ts",
+        "dev": "nodemon src/pub_sub/pub_sub.ts",
         "dev:debug": "nodemon --inspect src/server.ts",
         "build-ts": "tsc",
         "serve": "node dist/server.js",
@@ -28,7 +28,6 @@
         "@types/node": "^12.0.2",
         "@types/request": "^2.48.1",
         "axios": "1.6.8",
-        "dotenv": "^16.4.5",
         "express": "^4.16.4",
         "js-yaml": "^3.13.1",
         "json-rules-engine": "^2.3.6",
@@ -40,8 +39,5 @@
         "reflect-metadata": "^0.1.13",
         "typeorm": "0.3.17",
         "winston": "^3.2.1"
-    },
-    "resolutions": {
-        "@types/mime": "3.0.4"
     }
 }

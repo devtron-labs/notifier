@@ -77,7 +77,6 @@ const user: string = process.env.DB_USER;
 const pwd: string = process.env.DB_PWD;
 const db: string = process.env.DB;
 
-const natsUrl = process.env.NATS_URL;
 
 
 let dbOptions: ConnectionOptions = {
@@ -97,22 +96,23 @@ createConnection(dbOptions).then(async connection => {
     logger.error("shutting down notifier due to un-successful database connection...")
     process.exit(1)
 });
+//
+// const natsUrl=process.env.NATS_URL
+// let conn : NatsConnection
+// (async () => {
+//     conn = await connect({servers:natsUrl})
+//     const jsm = await conn.jetstreamManager()
+//     const obj  = new PubSubServiceImpl(conn,jsm)
+//     await obj.Subscribe(NOTIFICATION_EVENT_TOPIC,natsEventHandler)
+// })()
 
-let conn : NatsConnection
-(async () => {
-    conn = await connect({servers:natsUrl})
-    const jsm = await conn.jetstreamManager()
-    const obj  = new PubSubServiceImpl(conn,jsm)
-    await obj.Subscribe(NOTIFICATION_EVENT_TOPIC,natsEventHandler)
-})()
-
-
-const natsEventHandler = (msg:string)=>{
-     const event :Event= JSON.parse(msg) as Event
-    console.log(event)
-    notificationService.sendNotification(event)
-
-}
+//
+// const natsEventHandler = (msg:string)=>{
+//      const event :Event= JSON.parse(msg) as Event
+//     console.log(event)
+//     notificationService.sendNotification(event)
+//
+// }
 
 // app.get('/', (req, res) => res.send('Welcome to notifier Notifier!'))
 //
