@@ -31,11 +31,11 @@ export interface vulnerability {
     fixedVersion: string;
     permission: string;
 }
-export interface severityCount {
+export interface severityCount  {
     high: number;
     moderate: number;
     low: number;
-}
+} 
 export interface WebhookParsedEvent {
     eventType?: string;
     devtronAppId?: number;
@@ -51,7 +51,7 @@ export interface WebhookParsedEvent {
     scannedAt?: Date;
     scannedBy?: string;
     vulnerabilities?: vulnerability[];
-    severityCount?: severityCount;
+    severityCount?: severityCount | {};
     ciMaterials?: ciMaterials[];
     buildHistoryLink?: string;
     appDetailsLink?: string;

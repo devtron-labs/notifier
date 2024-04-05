@@ -207,6 +207,8 @@ export class MustacheHelper {
           eventType = "success";
         } else if (event.eventTypeId === EVENT_TYPE.Fail){
           eventType = "fail";
+        }else if (event.eventTypeId===EVENT_TYPE.ImageScan){
+            eventType="imageScan"
         }
         let baseURL = event.baseUrl;
         let buildHistoryLink,appDetailsLink;
@@ -218,6 +220,7 @@ export class MustacheHelper {
         let vulnerabilities:vulnerability[] = this.mapVulnerabilities(imageScanExecutionInfo);
         this.defineArrayProperties<vulnerability>(vulnerabilities);
         let severityCount=this.mapSeverityCount(imageScanExecutionInfo);
+        this.defineObjectProperties<severityCount |{}>(severityCount);
         let devtronContainerImageTag='NA' ,devtronContainerImageRepo='NA';
             if (event.payload.dockerImageUrl){
                 const index = event.payload.dockerImageUrl.lastIndexOf(":");
@@ -249,17 +252,15 @@ export class MustacheHelper {
 
         };
     }
-    mapSeverityCount(imageScanExecutionInfo:any):severityCount{
+    mapSeverityCount(imageScanExecutionInfo:any):severityCount | {} {
         if (imageScanExecutionInfo && imageScanExecutionInfo.severityCount){
-
             return {
                 high: imageScanExecutionInfo.severityCount.high,
                 moderate: imageScanExecutionInfo.severityCount.moderate,
                 low: imageScanExecutionInfo.severityCount.low,
-              }
-                
+              }   
             } else{
-                return null;
+                return {};
             }
     }
      mapVulnerabilities(imageScanExecutionInfo: any): vulnerability[] {
@@ -293,6 +294,19 @@ export class MustacheHelper {
                 }
             });
         });
+    }
+    defineObjectProperties<T>(object: T): void {
+        if (typeof object!=="object"){
+             
+            return 
+        }
+            Object.defineProperty(object, 'getAll', {
+                get: function() {
+                    return JSON.stringify(object);
+                }
+            });
+        
+       
     }
     
 
