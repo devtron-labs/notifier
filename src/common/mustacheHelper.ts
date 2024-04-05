@@ -104,7 +104,7 @@ export class MustacheHelper {
             if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.indexOf(":");
             if (baseURL && event.payload.appDetailLink) appDetailsLink = `${baseURL}${event.payload.appDetailLink}`;
             if (baseURL && event.payload.deploymentHistoryLink) deploymentHistoryLink = `${baseURL}${event.payload.deploymentHistoryLink}`;
-
+    
             return {
                 eventTime: timestamp,
                 triggeredBy: event.payload.triggeredBy || "NA",
@@ -116,6 +116,8 @@ export class MustacheHelper {
                 dockerImg: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
                 appDetailsLink: appDetailsLink,
                 deploymentHistoryLink: deploymentHistoryLink,
+                deploymentWindowComment: event.payload.timeWindowComment ?? '',
+                deploymentWindowCommentStyle: event.payload.timeWindowComment ? 'block' : 'none',
             }
         }
         else if (event.eventTypeId===EVENT_TYPE.Approval){

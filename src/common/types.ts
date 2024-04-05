@@ -100,6 +100,8 @@ export interface ParsedCDEvent {
     appDetailsLink: string;
     deploymentHistoryLink: string;
     dockerImg: string;
+    deploymentWindowComment?: string;
+    deploymentWindowCommentStyle?: string;
 }
 export enum EVENT_TYPE {
     Trigger = 1,
