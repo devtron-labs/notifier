@@ -49,7 +49,8 @@ export class WebhookService implements Handler{
     }
 
     private sendAndLogNotification(event: Event, webhookTemplate: WebhookConfig, setting: NotificationSettings, p: string) {
-        this.sendNotification(event, webhookTemplate.web_hook_url, JSON.stringify(webhookTemplate.payload),webhookTemplate.header).then(result => {
+        const payload=typeof webhookTemplate.payload==="object"?JSON.stringify(webhookTemplate.payload) : webhookTemplate.payload;
+        this.sendNotification(event, webhookTemplate.web_hook_url, payload,webhookTemplate.header).then(result => {
             this.saveNotificationEventSuccessLog(result, event, p, setting);
         }).catch((error) => {
             this.logger.error(error.message);
@@ -101,19 +102,19 @@ export class WebhookService implements Handler{
           return res.data;
         } catch (error) {
           this.logger.error("webhook sendNotification error", error);
-          throw new Error("Unable to send notification");
         }
       }
 
 
 
     private saveNotificationEventSuccessLog(result: any, event: Event, p: any, setting: NotificationSettings) {
-        if (result["status"] == "error") {
-            this.saveNotificationEventFailureLog(event, p, setting)
-        } else {
-            let eventLog = this.eventLogBuilder.buildEventLog(event, p.dest, true, setting);
-            this.eventLogRepository.saveEventLog(eventLog);
-        }
+        
+            if (!result || result["status"] == "error") {
+                this.saveNotificationEventFailureLog(event, p, setting)
+            } else {
+                let eventLog = this.eventLogBuilder.buildEventLog(event, p.dest, true, setting);
+                this.eventLogRepository.saveEventLog(eventLog);
+            }  
     }
 
     private saveNotificationEventFailureLog(event: Event, p: any, setting: NotificationSettings) {
