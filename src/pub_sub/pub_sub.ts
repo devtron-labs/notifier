@@ -13,7 +13,15 @@
  * limitations under the License.
  *
  */
-import {connect, createInbox, JetStreamClient, NatsConnection, RetentionPolicy, StreamInfo, StringCodec} from "nats";
+import {
+    connect, consumerOpts,
+    createInbox,
+    JetStreamClient,
+    NatsConnection, NatsError,
+    RetentionPolicy,
+    StreamInfo,
+    StringCodec
+} from "nats";
 import {
     GetStreamSubjects,
     NatsConsumerConfig,
@@ -26,7 +34,7 @@ import {
 } from "./utils";
 import {ConsumerOptsBuilderImpl} from "nats/lib/nats-base-client/jsconsumeropts";
 
-import {ConsumerUpdateConfig, JetStreamManager, StreamConfig} from "nats/lib/nats-base-client/types";
+import {ConsumerInfo, ConsumerUpdateConfig, JetStreamManager, StreamConfig} from "nats/lib/nats-base-client/types";
 import * as process from "process";
 import {Event} from "../notification/service/notificationService";
 import {info} from "winston";
@@ -72,7 +80,6 @@ export class  PubSubServiceImpl implements PubSubService {
                 try {
                     const msgString = getJsonString(msg.data)
 
-                        // console.log(msg.data);
                          callback(msgString)
                         msg.ack();
 
@@ -85,60 +92,94 @@ export class  PubSubServiceImpl implements PubSubService {
 
            const streamConfiguration=NatsStreamWiseConfigMapping.get(streamName)
           const streamConfigParsed=getStreamConfig(streamConfiguration)
-          await this.addAndUpdateStream(streamName,streamConfigParsed)
+        await this.addAndUpdateStream(streamName,streamConfigParsed).catch(
+            (err) =>{
+                console.log("error occurred while add customer",err)
+            }
 
-
+        )
 
          //******* Getting consumer configuration
 
-        // const conUpdatedConfig1=await this.jsm.consumers.info(streamName,consumerName)
-        // console.log("updated consumer config",conUpdatedConfig1)
         const consumerConfiguration=NatsConsumerWiseConfigMapping.get(consumerName)
-        await this.updateConsumer(streamName,consumerName,consumerConfiguration)
-        // const conUpdatedConfig=await this.jsm.consumers.info(streamName,consumerName)
-        // console.log("updated consumer config",conUpdatedConfig)
+        await this.updateConsumer(streamName,consumerName,consumerConfiguration) .catch(
+            (err) =>{
+                console.log("error occurred while add customer",err)
+            })
+
 
        // ********** Creating a consumer
-        const consumerInfo =  this.jsm.consumers.add(streamName,consumerOptsDetails.getOpts());
-        // *********  Nats Subscribe() function
-        await this.js.subscribe(topic, consumerOptsDetails)
 
+       await this.jsm.consumers.add(streamName,consumerOptsDetails.getOpts())
+            .catch(
+            (err) =>{
+                console.log("error occurred while add customer",err)
+            }
+        )
+
+
+        // *********  Nats Subscribe() function
+        await this.js.subscribe(topic,consumerOptsDetails).catch(
+            (err)=>{
+                console.log("error occurred while subscribing",err)
+            }
+        )
     }
 
 
-       async updateConsumer(streamName :string , consumerName :string,consumerConfiguration :NatsConsumerConfig){
+       async  updateConsumer(streamName :string , consumerName :string,consumerConfiguration :NatsConsumerConfig){
             let updatesDetected :boolean =false
-            const info=   await this.jsm.consumers.info(streamName,consumerName)
+           try{
+            const info:ConsumerInfo | null =   await this.jsm.consumers.info(streamName,consumerName)
            const existingConsumerInfo=info.config
             if (consumerConfiguration.ack_wait>0 && existingConsumerInfo.ack_wait!=consumerConfiguration.ack_wait){
                 existingConsumerInfo.ack_wait=consumerConfiguration.ack_wait
                 updatesDetected=true
             }
-            if (consumerConfiguration.num_replicas>0  && existingConsumerInfo.num_replicas!=consumerConfiguration.num_replicas){
+            if (consumerConfiguration.num_replicas>0 && consumerConfiguration.num_replicas<5 && existingConsumerInfo.num_replicas!=consumerConfiguration.num_replicas){
                 existingConsumerInfo.num_replicas=consumerConfiguration.num_replicas
                 updatesDetected=true
             }
             if (updatesDetected==true){
                 await  this.jsm.consumers.update(streamName,consumerName,existingConsumerInfo)
             }
+            }
+           catch (err){
+              if(err instanceof  NatsError ){
+                  if(err.api_error.err_code!=10014){
+                       console.log(err)
+                  }
+              }
+           }
         }
 
         async addAndUpdateStream(streamName:string,streamConfig :StreamConfig ){
-              const Info:StreamInfo | null =await this.jsm.streams.info(streamName)
-               let existingStreamInfo=Info!=null?Info.config:null
-            if (existingStreamInfo===null){
-                // Stream doesn't already exist.Need to create a new stream
-                const cfgToSet=getNewConfig(streamName, streamConfig)
-            const streaminfo=    await this.jsm.streams.add(cfgToSet)
-                 console.log(streaminfo)
-              }
-            else{
-                streamConfig.name=streamName
-                 if (checkConfigChangeReqd(existingStreamInfo,streamConfig)){
-                     await this.jsm.streams.update(streamName,existingStreamInfo)
+             try{
+                 const Info:StreamInfo | null = await this.jsm.streams.info(streamName)
+                 streamConfig.name=streamName
+                 if(Info){
+                 if (checkConfigChangeReqd(Info.config,streamConfig)){
+                    const si= await this.jsm.streams.update(streamName,Info.config)
+                     console.log(si)
+                     const val=checkConfigChangeReqd(Info.config,streamConfig)
+                     console.log(val)
+                   }
+                  }
+                }
+            catch(err) {
+                if (err instanceof NatsError) {
+                    if(err.api_error.err_code==10059){
 
-                 }
-            }
+                    const cfgToSet = getNewConfig(streamName, streamConfig)
+                    const streamInfo = await this.jsm.streams.add(cfgToSet)
+                    console.log(streamInfo)
+                    console.log(err)
+                    }
+
+                  }
+                console.log(err)
+
+               }
 
          }
 
@@ -163,7 +204,7 @@ function checkConfigChangeReqd(existingStreamInfo:StreamConfig,toUpdateConfig:St
    let configChanged:Boolean=false
     const newStreamSubjects = GetStreamSubjects(toUpdateConfig.name)
 
-    if ((toUpdateConfig.max_age !=0 && (toUpdateConfig.max_age != existingStreamInfo.max_age))  || (newStreamSubjects.length!=existingStreamInfo.subjects.length)||(toUpdateConfig.num_replicas != existingStreamInfo.num_replicas)) {
+    if ((toUpdateConfig.max_age !=0 && (toUpdateConfig.max_age != existingStreamInfo.max_age))  || (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas<5 && toUpdateConfig.num_replicas>=0)) {
 
         existingStreamInfo.max_age = toUpdateConfig.max_age
         existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
@@ -172,8 +213,7 @@ function checkConfigChangeReqd(existingStreamInfo:StreamConfig,toUpdateConfig:St
     return configChanged
 }
 function getNewConfig(stream:string,toUpdateConfig:StreamConfig):(StreamConfig){
-   let  cfg :StreamConfig = {
-       max_age: 0, num_replicas: 0, retention: undefined,
+   const  cfg :StreamConfig = {
        allow_direct: false,
        allow_rollup_hdrs: false,
        deny_delete: false,
@@ -181,12 +221,15 @@ function getNewConfig(stream:string,toUpdateConfig:StreamConfig):(StreamConfig){
        discard: undefined,
        discard_new_per_subject: false,
        duplicate_window: 0,
+       max_age: 0,
        max_bytes: 0,
        max_consumers: 0,
        max_msg_size: 0,
        max_msgs: 0,
        max_msgs_per_subject: 0,
        mirror_direct: false,
+       num_replicas: 0,
+       retention: undefined,
        sealed: false,
        storage: undefined,
        subjects:GetStreamSubjects(stream) ,
