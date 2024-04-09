@@ -34,6 +34,7 @@ import {PubSubServiceImpl} from "./pub_sub/pub_sub";
 const app = express();
 app.use(express.json());
 
+const natsUrl=process.env.NATS_URL
 
 let logger = winston.createLogger({
     level: 'info',
@@ -106,13 +107,13 @@ createConnection(dbOptions).then(async connection => {
 //     await obj.Subscribe(NOTIFICATION_EVENT_TOPIC,natsEventHandler)
 // })()
 
-//
-// const natsEventHandler = (msg:string)=>{
-//      const event :Event= JSON.parse(msg) as Event
-//     console.log(event)
-//     notificationService.sendNotification(event)
-//
-// }
+
+const natsEventHandler = (msg:string)=>{
+     const event :Event= JSON.parse(msg) as Event
+    console.log(event)
+    notificationService.sendNotification(event)
+
+}
 
 // app.get('/', (req, res) => res.send('Welcome to notifier Notifier!'))
 //
@@ -130,5 +131,15 @@ createConnection(dbOptions).then(async connection => {
 //     notificationService.sendNotification(req.body)
 //     res.send('notifications sent')
 // });
+
+//
+let conn : NatsConnection
+(async () => {
+    conn = await connect({servers:natsUrl})
+    const jsm = await conn.jetstreamManager()
+    const obj  = new PubSubServiceImpl(conn,jsm)
+    await obj.Subscribe(NOTIFICATION_EVENT_TOPIC,natsEventHandler)
+})()
+
 //
 // app.listen(3000, () => logger.info('Notifier app listening on port 3000!'))

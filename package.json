@@ -5,7 +5,7 @@
     "main": "dist/server.js",
     "scripts": {
         "start": "ts-node src/server.ts",
-        "dev": "nodemon src/pub_sub/pub_sub.ts",
+        "dev": "nodemon src/server.ts",
         "dev:debug": "nodemon --inspect src/server.ts",
         "build-ts": "tsc",
         "serve": "node dist/server.js",
