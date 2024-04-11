@@ -172,7 +172,6 @@ export class SESService implements Handler {
                 json = Mustache.render(template, parsedEvent)
             }
 
-
             const res = await sdk.send(
                 {
                     email: JSON.parse(json)

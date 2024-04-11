@@ -1,7 +1,7 @@
 import { Event } from '../notification/service/notificationService';
 import moment from 'moment-timezone';
 import e, { json } from 'express';
-import { EVENT_TYPE } from "./types";
+import {EVENT_TYPE, ParsedScoopNotification} from "./types";
 import { ciMaterials ,ParsedCIEvent,vulnerability,severityCount,WebhookParsedEvent,ParseApprovalEvent,ParseConfigApprovalEvent,ParsedCDEvent} from './types';
 export class MustacheHelper {
     private CD_STAGE = {
@@ -35,7 +35,41 @@ export class MustacheHelper {
         return "NA"
     }
 
-    parseEvent(event: Event, isSlackNotification?: boolean): ParsedCIEvent | ParsedCDEvent | ParseApprovalEvent | ParseConfigApprovalEvent{
+    parseScoopNotification(event: Event | any): ParsedScoopNotification {
+        const  clusterName = event?.cluster
+        const  message = event?.message
+        const  controller = event?.controller
+        const impactObject = event?.impactObject
+
+        let parsedScoopNotification: ParsedScoopNotification = {
+            cluster: clusterName,
+            message: message,
+            controller: {
+                kind: controller?.kind,
+                name: controller?.name,
+                namespace: controller?.namespace,
+                gorup: controller?.group,
+                version: controller?.version,
+                maxReplicas: controller?.maxReplicas,
+                minReplicas: controller?.minReplicas,
+                currentReplicas: controller?.currentReplicas
+            },
+            impactObject: {
+                kind: impactObject?.kind,
+                name: impactObject?.name,
+                namespace: impactObject?.namespace,
+                group: impactObject?.group,
+                version: impactObject?.version
+            }
+        }
+
+        return parsedScoopNotification
+    }
+
+    parseEvent(event: Event, isSlackNotification?: boolean): ParsedCIEvent | ParsedCDEvent | ParseApprovalEvent | ParseConfigApprovalEvent | ParsedScoopNotification{
+        if(event.eventTypeId===EVENT_TYPE.ScoopNotification){
+            return this.parseScoopNotification(event)
+        }
         let baseURL = event.baseUrl;
         let material = event.payload.material;
         let ciMaterials;

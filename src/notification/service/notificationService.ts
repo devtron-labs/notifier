@@ -34,38 +34,39 @@ class NotificationService {
         if (!this.isValidEventForApproval(event)) {
             return
         }
+
         this.logger.info('notificationSettingsRepository.findByEventSource')
-          if (!event.payload.providers || event.payload.providers == 0) {
-                this.logger.info("no notification settings found for event " + event.correlationId);
+        if (!event.payload.providers || event.payload.providers == 0) {
+            this.logger.info("no notification settings found for event " + event.correlationId);
+            return
+        }
+        let destinationMap = new Map();
+        let configsMap = new Map();
+        this.logger.info("notification settings " );
+        this.logger.info(JSON.stringify(event.payload.providers))
+        event.payload.providers.forEach((setting) => {
+            const providerObjects = setting
+            let id = providerObjects['dest'] + '-' + providerObjects['configId']
+            configsMap.set(id, false)
+        });
+
+
+        this.templatesRepository.findByEventTypeId(event.eventTypeId).then((templateResults:NotificationTemplates[]) => {
+            if (!templateResults) {
+                this.logger.info("no templates found for event ", event);
                 return
             }
-            let destinationMap = new Map();
-            let configsMap = new Map();
-            this.logger.info("notification settings " );
-            this.logger.info(JSON.stringify(event.payload.providers))
-            event.payload.providers.forEach((setting) => {
-                const providerObjects = setting
-                    let id = providerObjects['dest'] + '-' + providerObjects['configId']
-                    configsMap.set(id, false)
-            });
-
-
-                    this.templatesRepository.findByEventTypeId(event.eventTypeId).then((templateResults:NotificationTemplates[]) => {
-                        if (!templateResults) {
-                            this.logger.info("no templates found for event ", event);
-                            return
-                        }
-                        let settings = new NotificationSettings()
-                        settings.config = event.payload.providers
-                        settings.pipeline_id = event.pipelineId
-                        settings.event_type_id = event.eventTypeId
-
-                        for (let h of this.handlers) {
-                            if ((h instanceof SESService) || (h instanceof SMTPService)){
-                            h.handle(event, templateResults, settings, configsMap, destinationMap)
-                            }
-                        }
-                    })
+            let settings = new NotificationSettings()
+            settings.config = event.payload.providers
+            settings.pipeline_id = event.pipelineId
+            settings.event_type_id = event.eventTypeId
+            for (let h of this.handlers) {
+                if ((h instanceof SESService) || (h instanceof SMTPService)){
+                    h.handle(event, templateResults, settings, configsMap, destinationMap)
+                }
+            }
+        }).
+        catch(err => this.logger.error("err" + err))
 
     }
 
@@ -151,8 +152,10 @@ class NotificationService {
         return false;
     }
     private isValidEventForApproval(event: Event) {
-        if (event.eventTypeId && event.correlationId && event.payload && event.baseUrl)
+        if ((event.eventTypeId && event.correlationId && event.payload && event.baseUrl) || (event.eventTypeId == EVENT_TYPE.ScoopNotification))
+        {
             return true;
+        }
         return false;
     }
 }
