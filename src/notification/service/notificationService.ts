@@ -152,8 +152,7 @@ class NotificationService {
         return false;
     }
     private isValidEventForApproval(event: Event) {
-        if ((event.eventTypeId && event.correlationId && event.payload && event.baseUrl) || (event.eventTypeId == EVENT_TYPE.ScoopNotification))
-        {
+        if (event.eventTypeId && event.correlationId && event.payload && (event.baseUrl || event.eventTypeId == EVENT_TYPE.ScoopNotification)) {
             return true;
         }
         return false;

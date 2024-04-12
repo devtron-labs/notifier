@@ -134,8 +134,7 @@ export enum EVENT_TYPE {
     ConfigApproval = 5,
     Blocked = 6,
     ImagePromotion = 7,
-    ScoopNotification = 8,
-    ImageScan = 9
-
+    ImageScan = 8,
+    ScoopNotification = 9,
 }
 
