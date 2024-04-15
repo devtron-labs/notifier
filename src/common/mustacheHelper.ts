@@ -166,7 +166,7 @@ export class MustacheHelper {
                 approvalLink:approvalLink,
             }
         }
-        else if (event.eventTypeId == EVENT_TYPE.ImagePromotion ){
+        else if (event.eventTypeId === EVENT_TYPE.ImagePromotion ){
 
             let artifactPromotionRequestViewLink : string   = `${baseURL}${event.payload?.artifactPromotionRequestViewLink}`
             let artifactPromotionApprovalLink = `${baseURL}${event.payload?.artifactPromotionApprovalLink}`
@@ -174,12 +174,14 @@ export class MustacheHelper {
             let imageComment = event.payload?.imageComment
             let imagePromotionSource = event.payload?.promotionArtifactSource
             let envName  = event.payload?.envName
+            let index = -1;
 
             return {
                 eventTime: timestamp,
                 triggeredBy: event.payload.triggeredBy || "NA",
                 appName: event.payload.appName || "NA",
                 envName: event.payload.envName || envName,
+                imageTag: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
                 tags: imageTagNames,
                 comment: imageComment,
                 promotionArtifactSource: imagePromotionSource,
