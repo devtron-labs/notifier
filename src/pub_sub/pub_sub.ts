@@ -31,6 +31,7 @@ import {ConsumerInfo, ConsumerUpdateConfig, JetStreamManager, StreamConfig} from
 
 export interface PubSubService {
     Subscribe(topic: string, callback: (msg: string) => void): void
+
     updateConsumer(streamName: string, consumerName: string, existingConsumerInfo: ConsumerUpdateConfig): void
 }
 
@@ -61,14 +62,19 @@ export class PubSubServiceImpl implements PubSubService {
             deliver_subject: inbox,
             durable_name: consumerName,
             ack_wait: 2 * 1e9,
-            filter_subject: topic,
-            num_replicas: 0
+            num_replicas: 0,
+            filter_subject:topic
         }).bindStream(streamName).deliverLast().callback((err, msg) => {
-            console.log("waiting for messages");
+            console.log("got nats msg ,msgId:", msg.headers.get("Nats-Msg-Id"));
+
             try {
                 const msgString = getJsonString(msg.data)
                 callback(msgString)
                 msg.ack();
+
+                console.log("acked msg ,msgId:", msg.headers.get("Nats-Msg-Id"));
+
+
             } catch (err) {
                 console.log("error occurred due to this:", err);
             }
@@ -86,13 +92,20 @@ export class PubSubServiceImpl implements PubSubService {
         const toAddConsumer = await this.updateConsumer(streamName, consumerName, consumerConfiguration)
 
         // ********** Creating a consumer
+
         if (toAddConsumer) {
+            console.log("creating consumer")
             await this.jsm.consumers.add(streamName, consumerOptsDetails.getOpts())
                 .catch(
                     (err) => {
                         console.log("error occurred while adding consumer", err)
                     }
+                ).then(
+                    () => {
+                        console.log("consumer added successfully")
+                    }
                 )
+
         }
 
         // *********  Nats Subscribe() function
@@ -100,7 +113,12 @@ export class PubSubServiceImpl implements PubSubService {
             (err) => {
                 console.log("error occurred while subscribing", err)
             }
+        ).then(
+            () => {
+                console.log("subscribed to nats successfully")
+            }
         )
+
     }
 
 
@@ -122,25 +140,26 @@ export class PubSubServiceImpl implements PubSubService {
                     }
                 }
                 if (updatesDetected === true) {
-                    await this.jsm.consumers.update(streamName, consumerName, info.config).catch(
-                        (err) => {
-                            console.log("failed to update Consumer config", err)
-                        }
-                    )
+
+                    await this.jsm.consumers.update(streamName, consumerName, info.config)
+                    console.log("consumer updated successfully, consumerName: ", consumerName)
+
                 }
             }
         } catch (err) {
             if (err instanceof NatsError) {
-                if (err.api_error.err_code != 10014) {
-                    console.log("error occurred due to reason:", err)
-                } else {
+                console.log("error occurred due to reason:", err)
+
+                if (err.api_error.err_code === 10014) {
                     return true
                 }
             }
         }
+        return false
+
     }
 
-async addOrUpdateStream(streamName: string, streamConfig: StreamConfig) {
+    async addOrUpdateStream(streamName: string, streamConfig: StreamConfig) {
         try {
             const Info: StreamInfo | null = await this.jsm.streams.info(streamName)
             if (Info) {

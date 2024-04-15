@@ -39,7 +39,7 @@ export let NatsTopicMapping = new Map<string, NatsTopic>([
 export const NatsConsumerWiseConfigMapping = new Map<string, NatsConsumerConfig>(
     [[NOTIFICATION_EVENT_DURABLE, {
 
-        ack_wait: !isNaN(ackWait) ? ackWait : 2 * 1e9,
+        ack_wait: !isNaN(ackWait) ? ackWait*1e9 : 2 * 1e9,
         num_replicas: !isNaN(consumerReplica) ? consumerReplica : 0,
 
     }]
@@ -48,7 +48,7 @@ export const NatsConsumerWiseConfigMapping = new Map<string, NatsConsumerConfig>
 export const NatsStreamWiseConfigMapping = new Map<string, NatsStreamConfig>(
     [[ORCHESTRATOR_STREAM, {
 
-        max_age: !isNaN(maxAge) ? maxAge : 86400 * 1e9,
+        max_age: !isNaN(maxAge) ? maxAge*1e9 : 86400 * 1e9,
         num_replicas: !isNaN(streamReplica) ? streamReplica : 0,
 
     }]

@@ -105,18 +105,13 @@ const natsEventHandler = (msg: string) => {
     logger.info("call back function send notification is done",event)
 }
 
-if(notificationMedium==PUB_SUB) {
+if(natsUrl) {
     let conn: NatsConnection
     (async () => {
         conn = await connect({servers: natsUrl})
         const jsm = await conn.jetstreamManager()
         const obj = new PubSubServiceImpl(conn, jsm)
-        await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler).catch(
-            (err) => {
-                console.log("error occurred during subscribing", err)
-            }
-        )
-        logger.info("send notification is done")
+        await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
     })().catch(
         (err) => {
             console.log("error occurred due to", err)
