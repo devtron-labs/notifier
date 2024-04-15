@@ -175,6 +175,7 @@ export class MustacheHelper {
             let imagePromotionSource = event.payload?.promotionArtifactSource
             let envName  = event.payload?.envName
             let index = -1;
+            if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
 
             return {
                 eventTime: timestamp,
