@@ -1,4 +1,4 @@
-import NotifmeSdk from 'notifme-sdk-updated'
+import NotifmeSdk from 'notifme-sdk'
 import {Event, Handler} from '../../notification/service/notificationService';
 import Mustache from 'mustache'
 import Engine from 'json-rules-engine'
@@ -9,6 +9,7 @@ import {NotificationTemplates} from "../../entities/notificationTemplates";
 import {SESConfigRepository} from "../../repository/sesConfigRepository";
 import {UsersRepository} from "../../repository/usersRepository";
 import { MustacheHelper } from '../../common/mustacheHelper';
+import {EVENT_TYPE} from "../../common/types";
 
 //https://github.com/notifme/notifme-sdk/blob/master/src/models/notification-request.js#L132
 
@@ -161,7 +162,7 @@ export class SESService implements Handler {
             parsedEvent['fromEmail'] = event.payload['fromEmail'];
             parsedEvent['toEmail'] = event.payload['toEmail'];
             let json: string
-            if(event.eventTypeId===4 || event.eventTypeId == 6){
+            if(event.eventTypeId===4 || event.eventTypeId === EVENT_TYPE.ImagePromotion){
                 let commentDisplayStyle = (event.payload.imageComment === "") ? 'none' : 'inline';
                 let tagDisplayStyle = (event.payload.imageTagNames === null) ? 'none' : 'inline';
                 json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle ,tagDisplayStyle});

@@ -1,7 +1,8 @@
 import { Event } from '../notification/service/notificationService';
 import moment from 'moment-timezone';
-import e from 'express';
-
+import e, { json } from 'express';
+import { EVENT_TYPE } from "./types";
+import { ciMaterials ,ParsedCIEvent,vulnerability,severityCount,WebhookParsedEvent,ParseApprovalEvent,ParseConfigApprovalEvent,ParsedCDEvent} from './types';
 export class MustacheHelper {
     private CD_STAGE = {
         DEPLOY: "Deployment",
@@ -38,7 +39,7 @@ export class MustacheHelper {
         let baseURL = event.baseUrl;
         let material = event.payload.material;
         let ciMaterials;
-        if (event.eventTypeId!==4 && event.eventTypeId!==5 && event.eventTypeId!=6 ){
+        if (event.eventTypeId!==EVENT_TYPE.Approval && event.eventTypeId!==EVENT_TYPE.ConfigApproval && event.eventTypeId!=EVENT_TYPE.ImagePromotion){
         ciMaterials = material.ciMaterials ? material.ciMaterials.map((ci) => {
             if (material && material.gitTriggers && material.gitTriggers[ci.id]) {
                 let trigger = material.gitTriggers[ci.id];
@@ -115,9 +116,11 @@ export class MustacheHelper {
                 dockerImg: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
                 appDetailsLink: appDetailsLink,
                 deploymentHistoryLink: deploymentHistoryLink,
+                deploymentWindowComment: event.payload.timeWindowComment ?? '',
+                deploymentWindowCommentStyle: event.payload.timeWindowComment ? 'block' : 'none',
             }
         }
-        else if (event.eventTypeId===4){
+        else if (event.eventTypeId===EVENT_TYPE.Approval){
             let  imageTagNames,imageComment,imageLink,approvalLink;
             let index = -1;
             if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
@@ -141,7 +144,7 @@ export class MustacheHelper {
             
 
         }
-        else if (event.eventTypeId===5){
+        else if (event.eventTypeId===EVENT_TYPE.ConfigApproval){
             let  protectConfigFileType,protectConfigFileName,protectConfigComment,protectConfigLink,envName,approvalLink;
             if (event.payload.protectConfigFileType) protectConfigFileType = event.payload.protectConfigFileType;
             if (event.payload.protectConfigFileName) protectConfigFileName = event.payload.protectConfigFileName;
@@ -163,7 +166,7 @@ export class MustacheHelper {
                 approvalLink:approvalLink,
             }
         }
-        else if (event.eventTypeId == 6 ){
+        else if (event.eventTypeId == EVENT_TYPE.ImagePromotion ){
 
             let artifactPromotionRequestViewLink : string   = `${baseURL}${event.payload?.artifactPromotionRequestViewLink}`
             let artifactPromotionApprovalLink = `${baseURL}${event.payload?.artifactPromotionApprovalLink}`
@@ -186,15 +189,60 @@ export class MustacheHelper {
 
         }
     }
+     ParseCIMaterials(material: any): ciMaterials[] {
+        return material.ciMaterials ? material.ciMaterials.map((ci: any) => {
+            const trigger = material.gitTriggers && material.gitTriggers[ci.id];
+            if (trigger) {
+                if (ci.type === 'WEBHOOK') {
+                    const webhookDataInRequest = trigger.WebhookData;
+                    const isMergedTypeWebhook = webhookDataInRequest?.EventActionType === 'merged';
+                    const webhookData: WebhookData = {
+                        mergedType: isMergedTypeWebhook,
+                        data: this.modifyWebhookData(webhookDataInRequest?.Data, ci.url, isMergedTypeWebhook)
+                    };
+                    return {
+                        webhookType: true,
+                        webhookData: webhookData
+                    };
+                } else {
+                    return {
+                        branch: ci.value || 'NA',
+                        commit: trigger.Commit ? trigger.Commit.substring(0, 8) : 'NA',
+                        commitLink: this.createGitCommitUrl(ci.url, trigger.Commit),
+                        webhookType: false,
+                    };
+                }
+            } else {
+                return {
+                    branch: 'NA',
+                    commit: 'NA',
+                    commitLink: '#',
+                };
+            }
+        }) : [];
+    }
     parseEventForWebhook(event: Event ) :WebhookParsedEvent {
         let eventType: string;
-        if (event.eventTypeId === 1) {
+        if (event.eventTypeId === EVENT_TYPE.Trigger) {
           eventType = "trigger";
-        } else if (event.eventTypeId === 2) {
+        } else if (event.eventTypeId === EVENT_TYPE.Success) {
           eventType = "success";
-        } else {
+        } else if (event.eventTypeId === EVENT_TYPE.Fail){
           eventType = "fail";
+        }else if (event.eventTypeId===EVENT_TYPE.ImageScan){
+            eventType="imageScan"
         }
+        let baseURL = event.baseUrl;
+        let buildHistoryLink,appDetailsLink;
+            if (baseURL && event.payload.buildHistoryLink) buildHistoryLink = `${baseURL}${event.payload.buildHistoryLink}`;
+            if (baseURL && event.payload.appDetailLink) appDetailsLink = `${baseURL}${event.payload.appDetailLink}`;
+        let ciMaterials:ciMaterials[] = this.ParseCIMaterials(event.payload.material);
+        this.defineArrayProperties<ciMaterials>(ciMaterials);
+         let imageScanExecutionInfo = event.payload?.imageScanExecutionInfo;
+        let vulnerabilities:vulnerability[] = this.mapVulnerabilities(imageScanExecutionInfo);
+        this.defineArrayProperties<vulnerability>(vulnerabilities);
+        let severityCount=this.mapSeverityCount(imageScanExecutionInfo);
+        this.defineObjectProperties<severityCount |{}>(severityCount);
         let devtronContainerImageTag='NA' ,devtronContainerImageRepo='NA';
             if (event.payload.dockerImageUrl){
                 const index = event.payload.dockerImageUrl.lastIndexOf(":");
@@ -214,8 +262,75 @@ export class MustacheHelper {
           devtronContainerImageTag:devtronContainerImageTag,
           devtronContainerImageRepo:devtronContainerImageRepo,
           devtronApprovedByEmail: event.payload.approvedByEmail,
+          ciMaterials:ciMaterials,
+          vulnerabilities:vulnerabilities,
+          severityCount:severityCount,
+          scannedAt:event.payload.imageScanExecutionInfo?.scannedAt,
+          scannedBy:event.payload.imageScanExecutionInfo?.scannedBy,
+          buildHistoryLink: buildHistoryLink,
+          appDetailsLink: appDetailsLink,
+
+
+
         };
     }
+    mapSeverityCount(imageScanExecutionInfo:any):severityCount | {} {
+        if (imageScanExecutionInfo && imageScanExecutionInfo.severityCount){
+            return {
+                high: imageScanExecutionInfo.severityCount.high,
+                moderate: imageScanExecutionInfo.severityCount.moderate,
+                low: imageScanExecutionInfo.severityCount.low,
+              }
+            } else{
+                return {};
+            }
+    }
+     mapVulnerabilities(imageScanExecutionInfo: any): vulnerability[] {
+        if (imageScanExecutionInfo && imageScanExecutionInfo.vulnerabilities) {
+            return imageScanExecutionInfo.vulnerabilities.map((vuln: any) => ({
+                CVEName: vuln.cveName,
+                severity: vuln.severity,
+                package: vuln.package || undefined,
+                currentVersion: vuln.currentVersion,
+                fixedVersion: vuln.fixedVersion,
+                permission: vuln.permission,
+            }));
+        } else {
+            return [];
+        }
+    }
+     defineArrayProperties<T>(array: T[]): void {
+        if (typeof array!=="object"){
+            return
+        }
+        Object.defineProperty(array, 'getAll', {
+            get: function() {
+                return array.map(item => JSON.stringify(item));
+            }
+        });
+
+        array.forEach((item, index) => {
+            Object.defineProperty(item, 'isLastIndex', {
+                get: function() {
+                    return index === array.length - 1;
+                }
+            });
+        });
+    }
+    defineObjectProperties<T>(object: T): void {
+        if (typeof object!=="object"){
+
+            return
+        }
+            Object.defineProperty(object, 'getAll', {
+                get: function() {
+                    return JSON.stringify(object);
+                }
+            });
+
+
+    }
+
 
     modifyWebhookData (webhookDataMap: any, gitUrl : string, isMergedTypeWebhook : boolean) : any {
 
@@ -251,58 +366,10 @@ export class MustacheHelper {
     }
 }
 
-//For Slack
-interface ParsedCIEvent {
-    eventTime: number | string;
-    triggeredBy: string;
-    appName: string;
-    pipelineName: string;
-    ciMaterials: {
-        branch: string;
-        commit: string
-        commitLink: string;
-        webhookType: boolean;
-        webhookData: WebhookData;
-    }[];
-    buildHistoryLink: string;
-    failureReason?: string;
-}
-interface WebhookParsedEvent{
-    eventType?:string;
-    devtronAppId?:number;
-    devtronEnvId?:number;
-    devtronAppName?:string;
-    devtronEnvName?:string;
-    devtronCdPipelineId?:number;
-    devtronCiPipelineId?:number;
-    devtronApprovedByEmail?:string[];
-    devtronTriggeredByEmail:string;
-    devtronContainerImageTag?:string;
-    devtronContainerImageRepo?:string;
-}
-interface ParseApprovalEvent{
-    eventTime: number | string;
-    triggeredBy: string;
-    appName: string;
-    pipelineName: string;
-    envName: string;
-    tags?:string[];
-    comment?:string;
-    imageLink?:string;
-    imageTag: string;
-    approvalLink?:string;
-
-}
-interface ParseConfigApprovalEvent{
-    eventTime: number | string;
-    triggeredBy: string;
-    appName: string;
-    envName: string;
-    protectConfigComment?:string[];
-    protectConfigFileType:string;
-    protectConfigFileName:string;
-    protectConfigLink?:string;
-    approvalLink?:string;
+;
+export class WebhookData {
+    mergedType : boolean;   // merged/non-merged
+    data: Map<string, string>;
 }
 
 interface ParseArtifactPromotionEvent {
@@ -315,31 +382,4 @@ interface ParseArtifactPromotionEvent {
     artifactPromotionRequestViewLink?: string
     artifactPromotionApprovalLink?: string
     promotionArtifactSource?: string
-}
-
-interface ParsedCDEvent {
-    eventTime: number | string;
-    triggeredBy: string;
-    appName: string;
-    pipelineName: string;
-    envName: string;
-    imageTagNames?:string[];
-    imageComment?:string;
-    imageApprovalLink?:string;
-    stage: "Pre-deployment" | "Post-deployment" | "Deployment";
-    ciMaterials: {
-        branch: string;
-        commit: string
-        commitLink: string;
-        webhookType: boolean;
-        webhookData: WebhookData;
-    }[];
-    appDetailsLink: string;
-    deploymentHistoryLink: string;
-    dockerImg: string;
-}
-
-class WebhookData {
-    mergedType : boolean;   // merged/non-merged
-    data: Map<string, string>;
 }

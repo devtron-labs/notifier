@@ -4,10 +4,11 @@ import {NotificationTemplatesRepository, WebhookConfigRepository} from "../../re
 import {NotificationTemplates} from "../../entities/notificationTemplates";
 import {NotificationSettings} from "../../entities/notificationSettings";
 import { WebhookConfig } from "../../entities/webhookconfig";
-import { settings } from "cluster";
 import { WebhookService } from "../../destination/destinationHandlers/webhookHandler";
 import { SESService } from "../../destination/destinationHandlers/sesHandler";
 import { SMTPService } from "../../destination/destinationHandlers/smtpHandler";
+import { EVENT_TYPE } from "../../common/types";
+
 
 export interface Handler {
     handle(event: Event, templates: (NotificationTemplates[] | WebhookConfig[]), setting: NotificationSettings, configMap: Map<string, boolean>, destinationMap: Map<string, boolean>): boolean
@@ -47,7 +48,7 @@ class NotificationService {
                     let id = providerObjects['dest'] + '-' + providerObjects['configId']
                     configsMap.set(id, false)
             });
-            
+
 
                     this.templatesRepository.findByEventTypeId(event.eventTypeId).then((templateResults:NotificationTemplates[]) => {
                         if (!templateResults) {
@@ -58,7 +59,7 @@ class NotificationService {
                         settings.config = event.payload.providers
                         settings.pipeline_id = event.pipelineId
                         settings.event_type_id = event.eventTypeId
-                        
+
                         for (let h of this.handlers) {
                             if ((h instanceof SESService) || (h instanceof SMTPService)){
                             h.handle(event, templateResults, settings, configsMap, destinationMap)
@@ -95,31 +96,38 @@ class NotificationService {
                     configsMap.set(id, false)
                 });
             });
-            
+
             settingsResults.forEach((setting) => {
-       
+
                 const configArray =  setting.config as any;
                 if (Array.isArray(configArray)) {
                   const webhookConfig = configArray.filter((config) => config.dest === 'webhook');
-              
+
                   if (webhookConfig.length) {
                     const webhookConfigRepository = new WebhookConfigRepository();
                     webhookConfig.forEach(config => {
                         webhookConfigRepository.getAllWebhookConfigs().then((templateResults: WebhookConfig[]) => {
                             const newTemplateResult = templateResults.filter((t) => t.id === config.configId);
-                    
+
                             if (newTemplateResult.length === 0) {
                               this.logger.info("no templates found for event ", event);
                               return;
                             }
-                    
+                            
+                            let ImageScanEvent = JSON.parse(JSON.stringify(event));
+                            if (!!event.payload.imageScanExecutionInfo){
+                                ImageScanEvent.payload.imageScanExecutionInfo = JSON.parse(JSON.stringify(event.payload.imageScanExecutionInfo[setting.id] ?? {}));
+                            }
                             for (const h of this.handlers) {
-                              if (h instanceof WebhookService) {
+                              if (h instanceof WebhookService){
+                                if  (event.eventTypeId===EVENT_TYPE.ImageScan && !!event.payload.imageScanExecutionInfo){
+                                    h.handle(ImageScanEvent, newTemplateResult, setting, configsMap, destinationMap);
+                                }
                                 h.handle(event, newTemplateResult, setting, configsMap, destinationMap);
                               }
                             }
                           });
-                    });   
+                    });
                 }
                 if (configArray.length > webhookConfig.length){
                     this.templatesRepository.findByEventTypeIdAndNodeType(event.eventTypeId, event.pipelineType).then((templateResults:NotificationTemplates[]) => {
