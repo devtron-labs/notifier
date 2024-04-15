@@ -61,7 +61,7 @@ export class PubSubServiceImpl implements PubSubService {
             deliver_subject: inbox,
             durable_name: consumerName,
             ack_wait: 2 * 1e9,
-            filter_subject: "test_subject",
+            filter_subject: topic,
             num_replicas: 0
         }).bindStream(streamName).deliverLast().callback((err, msg) => {
             console.log("waiting for messages");
