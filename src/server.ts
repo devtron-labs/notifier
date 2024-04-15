@@ -111,9 +111,17 @@ if(notificationMedium==PUB_SUB) {
         conn = await connect({servers: natsUrl})
         const jsm = await conn.jetstreamManager()
         const obj = new PubSubServiceImpl(conn, jsm)
-        await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
+        await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler).catch(
+            (err) => {
+                console.log("error occurred during subscribing", err)
+            }
+        )
         logger.info("send notification is done")
-    })()
+    })().catch(
+        (err) => {
+            console.log("error occurred due to", err)
+        }
+    )
 }
 else {
     app.post('/notify', (req, res) => {

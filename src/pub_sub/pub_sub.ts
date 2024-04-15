@@ -31,7 +31,6 @@ import {ConsumerInfo, ConsumerUpdateConfig, JetStreamManager, StreamConfig} from
 
 export interface PubSubService {
     Subscribe(topic: string, callback: (msg: string) => void): void
-
     updateConsumer(streamName: string, consumerName: string, existingConsumerInfo: ConsumerUpdateConfig): void
 }
 
@@ -84,11 +83,7 @@ export class PubSubServiceImpl implements PubSubService {
         //******* Getting consumer configuration
 
         const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
-        const toAddConsumer = await this.updateConsumer(streamName, consumerName, consumerConfiguration).catch(
-            (err) => {
-                console.log("error occurred while adding customer", err)
-            })
-
+        const toAddConsumer = await this.updateConsumer(streamName, consumerName, consumerConfiguration)
 
         // ********** Creating a consumer
         if (toAddConsumer) {
@@ -145,7 +140,7 @@ export class PubSubServiceImpl implements PubSubService {
         }
     }
 
-    async addOrUpdateStream(streamName: string, streamConfig: StreamConfig) {
+async addOrUpdateStream(streamName: string, streamConfig: StreamConfig) {
         try {
             const Info: StreamInfo | null = await this.jsm.streams.info(streamName)
             if (Info) {
