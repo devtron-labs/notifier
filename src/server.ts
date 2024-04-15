@@ -28,9 +28,9 @@ import { WebhookConfigRepository } from './repository/webhookConfigRepository';
 import { WebhookService } from './destination/destinationHandlers/webhookHandler';
 import { WebhookConfig } from './entities/webhookconfig';
 import * as process from "process";
+import bodyParser from 'body-parser';
 const app = express();
-app.use(express.json());
-
+app.use(bodyParser.json({ limit: '10mb' }));
 
 let logger = winston.createLogger({
     level: 'info',
