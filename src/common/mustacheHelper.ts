@@ -381,7 +381,8 @@ interface ParseArtifactPromotionEvent {
     envName: string;
     tags?:string[];
     comment?:string;
-    artifactPromotionRequestViewLink?: string
-    artifactPromotionApprovalLink?: string
-    promotionArtifactSource?: string
+    artifactPromotionRequestViewLink?: string;
+    artifactPromotionApprovalLink?: string;
+    promotionArtifactSource?: string;
+    imageTag: string;
 }
