@@ -102,7 +102,7 @@ createConnection(dbOptions).then(async connection => {
 const natsEventHandler = (msg: string) => {
     const event: Event = JSON.parse(msg) as Event
     notificationService.sendNotification(event)
-
+    logger.info("call back function send notification is done",event)
 }
 
 if(notificationMedium==PUB_SUB) {
@@ -112,6 +112,7 @@ if(notificationMedium==PUB_SUB) {
         const jsm = await conn.jetstreamManager()
         const obj = new PubSubServiceImpl(conn, jsm)
         await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
+        logger.info("send notification is done")
     })()
 }
 else {
