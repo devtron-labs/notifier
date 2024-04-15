@@ -34,6 +34,7 @@ import {send} from "./tests/sendSlackNotification";
 
 const app = express();
 const natsUrl = process.env.NATS_URL
+const PUB_SUB="nats"
 
 app.use(express.json());
 
@@ -77,6 +78,8 @@ const user: string = process.env.DB_USER;
 const pwd: string = process.env.DB_PWD;
 const db: string = process.env.DB;
 
+const notificationMedium: string=process.env.NOTIFICATION_MEDIUM
+
 
 let dbOptions: ConnectionOptions = {
     type: "postgres",
@@ -87,7 +90,6 @@ let dbOptions: ConnectionOptions = {
     database: db,
     entities: [NotificationSettings, NotifierEventLog, Event, NotificationTemplates, SlackConfig, SesConfig, SMTPConfig, WebhookConfig, Users]
 }
-
 createConnection(dbOptions).then(async connection => {
     logger.info("Connected to DB")
 }).catch(error => {
@@ -103,6 +105,23 @@ const natsEventHandler = (msg: string) => {
 
 }
 
+if(notificationMedium==PUB_SUB) {
+    let conn: NatsConnection
+    (async () => {
+        conn = await connect({servers: natsUrl})
+        const jsm = await conn.jetstreamManager()
+        const obj = new PubSubServiceImpl(conn, jsm)
+        await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
+    })()
+}
+else {
+    app.post('/notify', (req, res) => {
+        logger.info("notifications Received")
+        notificationService.sendNotification(req.body)
+        res.send('notifications sent')
+    });
+
+}
 app.get('/', (req, res) => res.send('Welcome to notifier Notifier!'))
 
 app.get('/health', (req, res) => {
@@ -113,21 +132,6 @@ app.get('/test', (req, res) => {
     send();
     res.send('Test!');
 })
-
-app.post('/notify', (req, res) => {
-    logger.info("notifications Received")
-    notificationService.sendNotification(req.body)
-    res.send('notifications sent')
-});
-
-
-let conn: NatsConnection
-(async () => {
-    conn = await connect({servers: natsUrl})
-    const jsm = await conn.jetstreamManager()
-    const obj = new PubSubServiceImpl(conn, jsm)
-    await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
-})()
 
 
 app.listen(3000, () => logger.info('Notifier app listening on port 3000!'))
