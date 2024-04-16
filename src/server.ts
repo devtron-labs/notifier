@@ -78,7 +78,7 @@ const user: string = process.env.DB_USER;
 const pwd: string = process.env.DB_PWD;
 const db: string = process.env.DB;
 
-const notificationMedium: string=process.env.NOTIFICATION_MEDIUM
+
 
 
 let dbOptions: ConnectionOptions = {
@@ -111,7 +111,7 @@ if(natsUrl) {
         conn = await connect({servers: natsUrl})
         const jsm = await conn.jetstreamManager()
         const obj = new PubSubServiceImpl(conn, jsm)
-        await obj.Subscribe("Test_Topic", natsEventHandler)
+        await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
     })().catch(
         (err) => {
             console.log("error occurred due to", err)
