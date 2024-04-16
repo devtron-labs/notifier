@@ -63,7 +63,7 @@ export class PubSubServiceImpl implements PubSubService {
             durable_name: consumerName,
             ack_wait: 2 * 1e9,
             num_replicas: 0,
-            filter_subject:topic
+
         }).bindStream(streamName).deliverLast().callback((err, msg) => {
             console.log("got nats msg ,msgId:", msg.headers.get("Nats-Msg-Id"));
 
@@ -78,7 +78,7 @@ export class PubSubServiceImpl implements PubSubService {
             } catch (err) {
                 console.log("error occurred due to this:", err);
             }
-        }).queue(queueName)
+        }).queue(queueName).filterSubject(topic)
 
         // *******Creating/Updating stream
 
