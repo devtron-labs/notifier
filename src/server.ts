@@ -34,7 +34,6 @@ import {send} from "./tests/sendSlackNotification";
 
 const app = express();
 const natsUrl = process.env.NATS_URL
-const PUB_SUB="nats"
 
 app.use(express.json());
 
@@ -99,8 +98,8 @@ createConnection(dbOptions).then(async connection => {
 });
 
 const natsEventHandler = (msg: string) => {
-    const e = JSON.parse(msg)
-    const event = JSON.parse(e) as Event
+    const eventAsString = JSON.parse(msg)
+    const event = JSON.parse(eventAsString) as Event
     notificationService.sendNotification(event)
     logger.info("call back function send notification is done",event)
 }
@@ -111,9 +110,7 @@ if(natsUrl) {
         conn = await connect({servers: natsUrl})
         const jsm = await conn.jetstreamManager()
         const obj = new PubSubServiceImpl(conn, jsm)
-        await obj.Subscribe(NOTIFICATION_EVENT_TOPIC,
-            natsEventHandler
-        )
+        await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
         console.log("call back function is called")
     })().catch(
         (err) => {

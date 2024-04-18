@@ -13,7 +13,7 @@
  * limitations under the License.
  *
  */
-import {createInbox, JetStreamClient, NatsConnection, NatsError, RetentionPolicy, StreamInfo, StringCodec} from "nats";
+import {createInbox, JetStreamClient, NatsConnection, NatsError, StreamInfo, StringCodec} from "nats";
 import {
     GetStreamSubjects,
     NatsConsumerConfig,
@@ -31,8 +31,9 @@ import {ConsumerInfo, ConsumerUpdateConfig, JetStreamManager, StreamConfig} from
 
 export interface PubSubService {
     Subscribe(topic: string, callback: (msg: string) => void): void
-
     updateConsumer(streamName: string, consumerName: string, existingConsumerInfo: ConsumerUpdateConfig): void
+    addOrUpdateStream(streamName: string, streamConfig: StreamConfig):void
+    checkConfigChangeReqd(existingStreamInfo: StreamConfig, toUpdateConfig: StreamConfig):Promise<boolean>
 }
 
 
@@ -61,7 +62,7 @@ export class PubSubServiceImpl implements PubSubService {
             name: consumerName,
             deliver_subject: inbox,
             durable_name: consumerName,
-            ack_wait: 2 * 1e9,
+            ack_wait: 120 * 1e9,
             num_replicas: 0,
             filter_subject: topic,
 
@@ -85,49 +86,49 @@ export class PubSubServiceImpl implements PubSubService {
         // *******Creating/Updating stream
 
         const streamConfiguration = NatsStreamWiseConfigMapping.get(streamName)
-        const streamConfigParsed = getStreamConfig(streamConfiguration)
+        const streamConfigParsed = getStreamConfig(streamConfiguration, streamName)
+
         await this.addOrUpdateStream(streamName, streamConfigParsed)
 
         //******* Getting consumer configuration
 
         const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
-        const toAddConsumer = await this.updateConsumer(streamName, consumerName, consumerConfiguration)
+
+        // *** newConsumerFound check the consumer is new or not
+
+        const newConsumerFound = await this.updateConsumer(streamName, consumerName, consumerConfiguration)
 
         // ********** Creating a consumer
 
-        if (toAddConsumer) {
+        if (newConsumerFound) {
             console.log("creating consumer")
-            await this.jsm.consumers.add(streamName, {
-                // name: consumerName,
-                deliver_subject: inbox,
-                durable_name: consumerName,
-                ack_wait: 9 * 1e9,
-                num_replicas: 0,
-                filter_subject: topic,
+            try {
+                await this.jsm.consumers.add(streamName, {
+                    name: consumerName,
+                    deliver_subject: inbox,
+                    durable_name: consumerName,
+                    ack_wait: 120 * 1e9,
+                    num_replicas: 0,
+                    filter_subject: topic,
 
-            })
-                .catch(
-                    (err) => {
-                        console.log("error occurred while adding consumer", err)
-                    }
-                ).then(
-                    () => {
-                        console.log("consumer added successfully")
-                    }
-                )
+                })
+                console.log("consumer added successfully")
+            } catch (err) {
+                console.log("error occurred while adding consumer", err)
+            }
+
 
         }
 
         // *********  Nats Subscribe() function
-        await this.js.subscribe(topic, consumerOptsDetails).catch(
-            (err) => {
-                console.log("error occurred while subscribing", err)
-            }
-        ).then(
-            () => {
-                console.log("subscribed to nats successfully")
-            }
-        )
+        try {
+            await this.js.subscribe(topic, consumerOptsDetails)
+            console.log("subscribed to nats successfully")
+
+        } catch (err) {
+            console.log("error occurred while subscribing", err)
+        }
+
 
     }
 
@@ -178,12 +179,8 @@ export class PubSubServiceImpl implements PubSubService {
         try {
             const Info: StreamInfo | null = await this.jsm.streams.info(streamName)
             if (Info) {
-                if (checkConfigChangeReqd(Info.config, streamConfig)) {
-                    await this.jsm.streams.update(streamName, Info.config).catch(
-                        (err) => {
-                            console.log("error occurred during updating streams", err)
-                        }
-                    )
+                if (await this.checkConfigChangeReqd(Info.config, streamConfig)) {
+                    await this.jsm.streams.update(streamName, Info.config)
                     console.log("streams updated successfully")
                 }
             }
@@ -191,9 +188,10 @@ export class PubSubServiceImpl implements PubSubService {
             if (err instanceof NatsError) {
                 if (err.api_error.err_code === 10059) {
 
-                    const cfgToSet = getNewConfig(streamName, streamConfig)
+                    // const cfgToSet = getNewConfig(streamName, streamConfig)
+                    streamConfig.name = streamName
                     try {
-                        await this.jsm.streams.add(cfgToSet)
+                        await this.jsm.streams.add(streamConfig)
                         console.log(" stream added successfully")
                     } catch (err) {
                         console.log("error occurred during adding streams", err)
@@ -210,6 +208,29 @@ export class PubSubServiceImpl implements PubSubService {
 
     }
 
+    async checkConfigChangeReqd(existingStreamInfo: StreamConfig, toUpdateConfig: StreamConfig):Promise<boolean> {
+        let configChanged: boolean = false
+        if (toUpdateConfig.max_age != 0 && (toUpdateConfig.max_age != existingStreamInfo.max_age)) {
+            existingStreamInfo.max_age = toUpdateConfig.max_age
+            configChanged = true
+        }
+        if (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas > 0) {
+            if (toUpdateConfig.num_replicas > 0 && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas != existingStreamInfo.num_replicas) {
+                if (toUpdateConfig.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
+                    existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
+                    configChanged = true
+                } else if (toUpdateConfig.num_replicas > 1) {
+                    console.log("replicas >1 is not possible in non-clustered mode")
+                } else {
+                    existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
+                    configChanged = true
+
+                }
+
+            }
+        }
+        return configChanged
+    }
 
 }
 
@@ -219,61 +240,79 @@ function getJsonString(bytes: Uint8Array) {
 
 }
 
-function getStreamConfig(streamConfig: NatsStreamConfig) {
-    const jsonString = JSON.stringify(streamConfig)
-    const streamConfigParsed: StreamConfig = JSON.parse(jsonString)
-    return streamConfigParsed
+function getStreamConfig(streamConfig: NatsStreamConfig, streamName: string) {
+
+    return {
+        num_replicas: streamConfig.num_replicas,
+        max_age: streamConfig.max_age,
+        subjects: GetStreamSubjects(streamName),
+    } as StreamConfig
 }
 
-function checkConfigChangeReqd(existingStreamInfo: StreamConfig, toUpdateConfig: StreamConfig) {
-    let configChanged: Boolean = false
-    if (toUpdateConfig.max_age != 0 && (toUpdateConfig.max_age != existingStreamInfo.max_age)) {
-        existingStreamInfo.max_age = toUpdateConfig.max_age
-        configChanged = true
-    }
-    if (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas > 0) {
-        existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
-        configChanged = true
-    }
-    return configChanged
-}
+//
+// function checkConfigChangeReqd(existingStreamInfo: StreamConfig, toUpdateConfig: StreamConfig) {
+//     let configChanged: Boolean = false
+//     if (toUpdateConfig.max_age != 0 && (toUpdateConfig.max_age != existingStreamInfo.max_age)) {
+//         existingStreamInfo.max_age = toUpdateConfig.max_age
+//         configChanged = true
+//     }
+//     if (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas > 0) {
+//
+//
+//         if (toUpdateConfig.num_replicas > 0 && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas != existingStreamInfo.num_replicas) {
+//             if (toUpdateConfig.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
+//                 existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
+//                 configChanged = true
+//             } else if (toUpdateConfig.num_replicas > 1) {
+//                 console.log("replicas >1 is not possible in non-clustered mode")
+//             } else {
+//                 existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
+//                 configChanged = true
+//
+//             }
+//
+//         }
+//     }
+//     return configChanged
+// }
 
-function getNewConfig(stream: string, toUpdateConfig: StreamConfig): (StreamConfig) {
-    const cfg: StreamConfig = {
-        allow_direct: false,
-        allow_rollup_hdrs: false,
-        deny_delete: false,
-        deny_purge: false,
-        discard: undefined,
-        discard_new_per_subject: false,
-        duplicate_window: 0,
-        max_age: 0,
-        max_bytes: 0,
-        max_consumers: 0,
-        max_msg_size: 0,
-        max_msgs: 0,
-        max_msgs_per_subject: 0,
-        mirror_direct: false,
-        num_replicas: 0,
-        retention: undefined,
-        sealed: false,
-        storage: undefined,
-        subjects: GetStreamSubjects(stream),
-        name: stream
-
-    }
-
-    if (toUpdateConfig.max_age != 0) {
-        cfg.max_age = toUpdateConfig.max_age
-    }
-    if (toUpdateConfig.num_replicas > 0) {
-        cfg.num_replicas = toUpdateConfig.num_replicas
-    }
-    if (toUpdateConfig.retention != RetentionPolicy.Limits) {
-        cfg.retention = toUpdateConfig.retention
-    }
-    return cfg
-
-
-}
+//
+// function getNewConfig(stream: string, toUpdateConfig: StreamConfig): (StreamConfig) {
+//     const cfg: StreamConfig = {
+//         allow_direct: false,
+//         allow_rollup_hdrs: false,
+//         deny_delete: false,
+//         deny_purge: false,
+//         discard: undefined,
+//         discard_new_per_subject: false,
+//         duplicate_window: 0,
+//         max_age: 0,
+//         max_bytes: 0,
+//         max_consumers: 0,
+//         max_msg_size: 0,
+//         max_msgs: 0,
+//         max_msgs_per_subject: 0,
+//         mirror_direct: false,
+//         num_replicas: 0,
+//         retention: undefined,
+//         sealed: false,
+//         storage: undefined,
+//         subjects: GetStreamSubjects(stream),
+//         name: stream
+//
+//     }
+//
+//     if (toUpdateConfig.max_age != 0) {
+//         cfg.max_age = toUpdateConfig.max_age
+//     }
+//     if (toUpdateConfig.num_replicas > 0) {
+//         cfg.num_replicas = toUpdateConfig.num_replicas
+//     }
+//     if (toUpdateConfig.retention != RetentionPolicy.Limits) {
+//         cfg.retention = toUpdateConfig.retention
+//     }
+//     return cfg
+//
+//
+// }
 
