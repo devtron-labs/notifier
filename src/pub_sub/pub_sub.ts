@@ -26,13 +26,7 @@ import {
 
 import {ConsumerOptsBuilderImpl} from "nats/lib/nats-base-client/jsconsumeropts";
 
-import {
-    AckPolicy,
-    ConsumerInfo,
-    ConsumerUpdateConfig,
-    JetStreamManager,
-    StreamConfig
-} from "nats/lib/nats-base-client/types";
+import {ConsumerInfo, ConsumerUpdateConfig, JetStreamManager, StreamConfig} from "nats/lib/nats-base-client/types";
 
 
 export interface PubSubService {
@@ -69,7 +63,7 @@ export class PubSubServiceImpl implements PubSubService {
             durable_name: consumerName,
             ack_wait: 2 * 1e9,
             num_replicas: 0,
-            filter_subject:topic,
+            filter_subject: topic,
 
 
         }).bindStream(streamName).callback((err, msg) => {
@@ -97,21 +91,20 @@ export class PubSubServiceImpl implements PubSubService {
         //******* Getting consumer configuration
 
         const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
-        const toAddConsumer =
-            true
-        await this.updateConsumer(streamName, consumerName, consumerConfiguration)
+        const toAddConsumer = await this.updateConsumer(streamName, consumerName, consumerConfiguration)
 
         // ********** Creating a consumer
 
         if (toAddConsumer) {
             console.log("creating consumer")
             await this.jsm.consumers.add(streamName, {
-                name: consumerName,
+                // name: consumerName,
                 deliver_subject: inbox,
                 durable_name: consumerName,
-                ack_wait: 2 * 1e9,
+                ack_wait: 9 * 1e9,
                 num_replicas: 0,
-                filter_subject:topic,
+                filter_subject: topic,
+
             })
                 .catch(
                     (err) => {
@@ -152,9 +145,14 @@ export class PubSubServiceImpl implements PubSubService {
                     if (consumerConfiguration.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
                         info.config.num_replicas = consumerConfiguration.num_replicas
                         updatesDetected = true
-                    } else {
+                    } else if (consumerConfiguration.num_replicas > 1) {
                         console.log("replicas >1 is not possible in non-clustered mode")
+                    } else {
+                        info.config.num_replicas = consumerConfiguration.num_replicas
+                        updatesDetected = true
+
                     }
+
                 }
                 if (updatesDetected === true) {
 
@@ -186,6 +184,7 @@ export class PubSubServiceImpl implements PubSubService {
                             console.log("error occurred during updating streams", err)
                         }
                     )
+                    console.log("streams updated successfully")
                 }
             }
         } catch (err) {
@@ -193,11 +192,13 @@ export class PubSubServiceImpl implements PubSubService {
                 if (err.api_error.err_code === 10059) {
 
                     const cfgToSet = getNewConfig(streamName, streamConfig)
-                    await this.jsm.streams.add(cfgToSet).catch(
-                        (err) => {
-                            console.log("error occurred during adding streams", err)
-                        }
-                    )
+                    try {
+                        await this.jsm.streams.add(cfgToSet)
+                        console.log(" stream added successfully")
+                    } catch (err) {
+                        console.log("error occurred during adding streams", err)
+                    }
+
 
                 } else {
                     console.log("error occurred due to :", err)
@@ -226,9 +227,11 @@ function getStreamConfig(streamConfig: NatsStreamConfig) {
 
 function checkConfigChangeReqd(existingStreamInfo: StreamConfig, toUpdateConfig: StreamConfig) {
     let configChanged: Boolean = false
-    if ((toUpdateConfig.max_age != 0 && (toUpdateConfig.max_age != existingStreamInfo.max_age)) || (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas >= 0)) {
-
+    if (toUpdateConfig.max_age != 0 && (toUpdateConfig.max_age != existingStreamInfo.max_age)) {
         existingStreamInfo.max_age = toUpdateConfig.max_age
+        configChanged = true
+    }
+    if (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas > 0) {
         existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
         configChanged = true
     }
