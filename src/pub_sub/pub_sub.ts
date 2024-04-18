@@ -26,7 +26,13 @@ import {
 
 import {ConsumerOptsBuilderImpl} from "nats/lib/nats-base-client/jsconsumeropts";
 
-import {ConsumerInfo, ConsumerUpdateConfig, JetStreamManager, StreamConfig} from "nats/lib/nats-base-client/types";
+import {
+    AckPolicy,
+    ConsumerInfo,
+    ConsumerUpdateConfig,
+    JetStreamManager,
+    StreamConfig
+} from "nats/lib/nats-base-client/types";
 
 
 export interface PubSubService {
@@ -63,8 +69,10 @@ export class PubSubServiceImpl implements PubSubService {
             durable_name: consumerName,
             ack_wait: 2 * 1e9,
             num_replicas: 0,
+            filter_subject:topic,
 
-        }).bindStream(streamName).deliverLast().callback((err, msg) => {
+
+        }).bindStream(streamName).callback((err, msg) => {
             console.log("got nats msg ,msgId:", msg.headers.get("Nats-Msg-Id"));
 
             try {
@@ -78,7 +86,7 @@ export class PubSubServiceImpl implements PubSubService {
             } catch (err) {
                 console.log("error occurred due to this:", err);
             }
-        }).queue(queueName).filterSubject(topic)
+        })
 
         // *******Creating/Updating stream
 
@@ -89,13 +97,22 @@ export class PubSubServiceImpl implements PubSubService {
         //******* Getting consumer configuration
 
         const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
-        const toAddConsumer = await this.updateConsumer(streamName, consumerName, consumerConfiguration)
+        const toAddConsumer =
+            true
+        await this.updateConsumer(streamName, consumerName, consumerConfiguration)
 
         // ********** Creating a consumer
 
         if (toAddConsumer) {
             console.log("creating consumer")
-            await this.jsm.consumers.add(streamName, consumerOptsDetails.getOpts())
+            await this.jsm.consumers.add(streamName, {
+                name: consumerName,
+                deliver_subject: inbox,
+                durable_name: consumerName,
+                ack_wait: 2 * 1e9,
+                num_replicas: 0,
+                filter_subject:topic,
+            })
                 .catch(
                     (err) => {
                         console.log("error occurred while adding consumer", err)

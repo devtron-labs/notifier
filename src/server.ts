@@ -98,9 +98,9 @@ createConnection(dbOptions).then(async connection => {
     process.exit(1)
 });
 
-
 const natsEventHandler = (msg: string) => {
-    const event: Event = JSON.parse(msg) as Event
+    const e = JSON.parse(msg)
+    const event = JSON.parse(e) as Event
     notificationService.sendNotification(event)
     logger.info("call back function send notification is done",event)
 }
@@ -111,7 +111,10 @@ if(natsUrl) {
         conn = await connect({servers: natsUrl})
         const jsm = await conn.jetstreamManager()
         const obj = new PubSubServiceImpl(conn, jsm)
-        await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
+        await obj.Subscribe(NOTIFICATION_EVENT_TOPIC,
+            natsEventHandler
+        )
+        console.log("call back function is called")
     })().catch(
         (err) => {
             console.log("error occurred due to", err)
@@ -119,12 +122,12 @@ if(natsUrl) {
     )
 }
 else {
-    app.post('/notify', (req, res) => {
+    app.post('/notify',
+        (req, res) => {
         logger.info("notifications Received")
         notificationService.sendNotification(req.body)
         res.send('notifications sent')
     });
-
 }
 app.get('/', (req, res) => res.send('Welcome to notifier Notifier!'))
 
