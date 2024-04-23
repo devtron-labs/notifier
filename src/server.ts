@@ -29,6 +29,7 @@ import { WebhookService } from './destination/destinationHandlers/webhookHandler
 import { WebhookConfig } from './entities/webhookconfig';
 import * as process from "process";
 import bodyParser from 'body-parser';
+import {register,collectDefaultMetrics} from "prom-client";
 const app = express();
 app.use(bodyParser.json({ limit: '10mb' }));
 
@@ -83,7 +84,7 @@ let dbOptions: ConnectionOptions = {
     database: db,
     entities: [NotificationSettings, NotifierEventLog, Event, NotificationTemplates, SlackConfig, SesConfig, SMTPConfig, WebhookConfig, Users]
 }
-
+collectDefaultMetrics();
 createConnection(dbOptions).then(async connection => {
     logger.info("Connected to DB")
 }).catch(error => {
@@ -107,6 +108,12 @@ app.post('/notify', (req, res) => {
     logger.info("notifications Received")
     notificationService.sendNotification(req.body)
     res.send('notifications sent')
+});
+// Endpoint to expose metrics
+app.get('/metrics', (req, res) => {
+    logger.info("metrics exposed")
+    res.set('Content-Type', register.contentType);
+    res.end(register.metrics());
 });
 
 app.listen(3000, () => logger.info('Notifier app listening on port 3000!'))
