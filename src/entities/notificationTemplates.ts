@@ -1,4 +1,4 @@
-import {Entity, Column, PrimaryGeneratedColumn} from "typeorm";
+ import {Entity, Column, PrimaryGeneratedColumn} from "typeorm";
  
 @Entity("notification_templates")
 export class NotificationTemplates {
