@@ -29,7 +29,9 @@ import { WebhookService } from './destination/destinationHandlers/webhookHandler
 import { WebhookConfig } from './entities/webhookconfig';
 import * as process from "process";
 import bodyParser from 'body-parser';
-import {register,collectDefaultMetrics} from "prom-client";
+import {register,collectDefaultMetrics} from 'prom-client';
+import expressPromiseRouter from 'express-promise-router';
+
 const app = express();
 app.use(bodyParser.json({ limit: '10mb' }));
 
@@ -84,7 +86,7 @@ let dbOptions: ConnectionOptions = {
     database: db,
     entities: [NotificationSettings, NotifierEventLog, Event, NotificationTemplates, SlackConfig, SesConfig, SMTPConfig, WebhookConfig, Users]
 }
-collectDefaultMetrics();
+
 createConnection(dbOptions).then(async connection => {
     logger.info("Connected to DB")
 }).catch(error => {
@@ -109,11 +111,18 @@ app.post('/notify', (req, res) => {
     notificationService.sendNotification(req.body)
     res.send('notifications sent')
 });
+const router = expressPromiseRouter();
+
+// Initialize Prometheus metrics
+collectDefaultMetrics();
+
 // Endpoint to expose metrics
-app.get('/metrics', (req, res) => {
-    logger.info("metrics exposed")
+router.get('/metrics', async (req, res) => {
     res.set('Content-Type', register.contentType);
-    res.end(register.metrics());
+    res.end(await register.metrics());
 });
+
+// Mount the router to the app
+app.use(router);
 
 app.listen(3000, () => logger.info('Notifier app listening on port 3000!'))
