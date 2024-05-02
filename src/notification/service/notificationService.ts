@@ -8,6 +8,8 @@ import { WebhookService } from "../../destination/destinationHandlers/webhookHan
 import { SESService } from "../../destination/destinationHandlers/sesHandler";
 import { SMTPService } from "../../destination/destinationHandlers/smtpHandler";
 import { EVENT_TYPE } from "../../common/types";
+import {SlackService} from "../../destination/destinationHandlers/slackHandler";
+import {NotifmeSdk} from 'notifme-sdk'
 
 
 export interface Handler {
@@ -70,11 +72,71 @@ class NotificationService {
 
     }
 
+    // this function is used to send webhook notification for scoop notification event type
+    private sendWebhookNotification(event: Event) {
+        this.handlers.forEach((h) => {
+            if (h instanceof WebhookService){
+                let setting = new NotificationSettings()
+                setting.event_type_id = event.eventTypeId
+                setting.pipeline_id = 0
+                setting.config = event.payload
+                h.sendAndLogNotification(event, event.payload.scoopNotificationConfig.webhookConfig as WebhookConfig, setting, {"dest": "webhook"})
+            }
+        })
+    }
+
+    // this function is used to send slack notification for scoop notification event type
+    private sendSlackNotification(event: Event) {
+        this.handlers.forEach((h) => {
+            if (h instanceof SlackService){
+                this.templatesRepository.findByEventTypeIdAndChannelType(event.eventTypeId, "slack").then((templateResults:NotificationTemplates[]) => {
+                    if (!templateResults) {
+                        this.logger.info("no templates found for event ", event);
+                        return
+                    }
+
+                    const slackTemplateConfig = templateResults[0]
+                    let sdk: NotifmeSdk = new NotifmeSdk({
+                        channels: {
+                            slack: {
+                                providers: [{
+                                    type: 'webhook',
+                                    webhookUrl: event.payload.scoopNotificationConfig.slackConfig.webhookUrl
+                                }]
+                            }
+                        }
+                    });
+
+                    let setting = new NotificationSettings()
+                    setting.event_type_id = event.eventTypeId
+                    setting.pipeline_id = 0
+                    setting.config = event.payload
+                    h.sendAndLogNotification(event, sdk,setting,{"dest": "slack"}, slackTemplateConfig)
+                })
+            }
+        })
+    }
+
     public sendNotification(event: Event) {
-        if (event.payload.providers){
+
+        if (event.payload.providers && event.payload.providers.length > 0){
             this.sendApprovalNotificaton(event)
             return
         }
+
+        // check webhook for scoop notification event type
+        if (event.eventTypeId == EVENT_TYPE.ScoopNotification && event.payload.scoopNotificationConfig.webhookConfig){
+            this.sendWebhookNotification(event)
+            return
+        }
+
+        // check slack for scoop notification event type
+        if (event.eventTypeId == EVENT_TYPE.ScoopNotification && event.payload.scoopNotificationConfig.slackConfig){
+            this.sendSlackNotification(event)
+            return
+        }
+
+
         if (!this.isValidEvent(event)) {
             return
         }
@@ -147,7 +209,7 @@ class NotificationService {
     }
 
     private isValidEvent(event: Event) {
-        if (event.eventTypeId && event.pipelineType && event.correlationId && event.payload && event.baseUrl)
+        if ((event.eventTypeId && event.pipelineType && event.correlationId && event.payload && event.baseUrl) || (event.eventTypeId == EVENT_TYPE.ScoopNotification))
             return true;
         return false;
     }

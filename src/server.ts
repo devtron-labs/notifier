@@ -76,11 +76,11 @@ const db: string = process.env.DB;
 
 let dbOptions: ConnectionOptions = {
     type: "postgres",
-    host: dbHost,
-    port: dbPort,
-    username: user,
-    password: pwd,
-    database: db,
+    host: "localhost",
+    port: 32080,
+    username: "postgres",
+    password: "shared-devtron-pg",
+    database: "orchestrator_14",
     entities: [NotificationSettings, NotifierEventLog, Event, NotificationTemplates, SlackConfig, SesConfig, SMTPConfig, WebhookConfig, Users]
 }
 
