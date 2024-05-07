@@ -30,8 +30,7 @@ import { WebhookConfig } from './entities/webhookconfig';
 import * as process from "process";
 import bodyParser from 'body-parser';
 import {collectDefaultMetrics, Registry, Counter, Histogram} from 'prom-client';
-import promClient from 'prom-client';
-import expressPromiseRouter from 'express-promise-router';
+
 
 const app = express();
 app.use(bodyParser.json({ limit: '10mb' }));
