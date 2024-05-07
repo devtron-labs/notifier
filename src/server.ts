@@ -29,7 +29,8 @@ import { WebhookService } from './destination/destinationHandlers/webhookHandler
 import { WebhookConfig } from './entities/webhookconfig';
 import * as process from "process";
 import bodyParser from 'body-parser';
-import {register,collectDefaultMetrics} from 'prom-client';
+import {collectDefaultMetrics, Registry, Counter, Histogram} from 'prom-client';
+import promClient from 'prom-client';
 import expressPromiseRouter from 'express-promise-router';
 
 const app = express();
@@ -94,35 +95,69 @@ createConnection(dbOptions).then(async connection => {
     logger.error("shutting down notifier due to un-successful database connection...")
     process.exit(1)
 });
+// create a registry to hold metrics
+const registry = new Registry()
+// Initialize Prometheus metrics
+collectDefaultMetrics({register:registry});
 
+const requestCounter = new Counter({
+    name: 'http_requests_total',
+    help: 'Total number of HTTP requests',
+    registers: [registry],
+    labelNames: ['method', 'path', 'status'],
+})
+
+const httpRequestTimer = new Histogram({
+    name: 'http_request_duration_ms',
+    help: 'Duration of HTTP requests in ms',
+    labelNames: ['method', 'path', 'status'],
+    registers: [registry],
+});
 app.get('/', (req, res) => res.send('Welcome to notifier Notifier!'))
 
 app.get('/health', (req, res) =>{
-    res.status(200).send("healthy")
+    requestCounter.labels(req.method, req.path, res.statusCode.toString()).inc()
+    const start = Date.now();
+    try{res.status(200).send("healthy")}
+finally {
+        const responseTimeInMs = Date.now() - start;
+        httpRequestTimer.labels(req.method, req.route.path, res.statusCode.toString()).observe(responseTimeInMs);
+    }
 })
 
 app.get('/test', (req, res) => {
-    send();
+    requestCounter.labels(req.method, req.path, res.statusCode.toString()).inc()
+    const start = Date.now();
+    try{send();}
+finally {
+        const responseTimeInMs = Date.now() - start;
+        httpRequestTimer.labels(req.method, req.route.path, res.statusCode.toString()).observe(responseTimeInMs);
+    }
     res.send('Test!');
 })
 
 app.post('/notify', (req, res) => {
+    requestCounter.labels(req.method, req.path, res.statusCode.toString()).inc()
+    const start = Date.now();
     logger.info("notifications Received")
-    notificationService.sendNotification(req.body)
-    res.send('notifications sent')
+    try{
+        notificationService.sendNotification(req.body)
+             res.send('notifications sent')
+    }finally {
+        const responseTimeInMs = Date.now() - start;
+        httpRequestTimer.labels(req.method, req.route.path, res.statusCode.toString()).observe(responseTimeInMs);
+    }
 });
-const router = expressPromiseRouter();
 
-// Initialize Prometheus metrics
-collectDefaultMetrics();
+
+
 
 // Endpoint to expose metrics
-router.get('/metrics', async (req, res) => {
-    res.set('Content-Type', register.contentType);
-    res.end(await register.metrics());
+app.get('/metrics', async (req, res) => {
+    const result = await registry.metrics()
+    res.send(result)
 });
 
-// Mount the router to the app
-app.use(router);
+
 
 app.listen(3000, () => logger.info('Notifier app listening on port 3000!'))
