@@ -110,7 +110,7 @@ export class SlackService implements Handler {
 
             let jsons: string = ''
             if (event.eventTypeId == EVENT_TYPE.ScoopNotification){
-                jsons = template
+                jsons = Mustache.render(template, event.payload.data);
             }else{
                 let parsedEvent = this.mh.parseEvent(event as Event, true);
                 jsons = Mustache.render(template, parsedEvent);
