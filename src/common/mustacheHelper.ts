@@ -40,7 +40,7 @@ export class MustacheHelper {
         let parsedScoopNotification: ParsedScoopNotification = {
             heading: event.payload.scoopNotificationConfig.data.heading,
             kind: event.payload.scoopNotificationConfig.data.kind,
-            name: event.payload.scoopNotificationConfig.data.name,
+            resourceName: event.payload.scoopNotificationConfig.data.name,
             action: event.payload.scoopNotificationConfig.data.action,
             clusterName: event.payload.scoopNotificationConfig.data.clusterName,
             namespace: event.payload.scoopNotificationConfig.data.namespace,

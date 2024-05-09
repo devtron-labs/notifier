@@ -84,7 +84,7 @@ export interface ParseConfigApprovalEvent {
 export interface ParsedScoopNotification {
     heading: string;
     kind: string;
-    name: string;
+    resourceName: string;
     action: string;
     clusterName: string;
     namespace: string;
