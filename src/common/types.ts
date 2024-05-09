@@ -82,25 +82,17 @@ export interface ParseConfigApprovalEvent {
 }
 
 export interface ParsedScoopNotification {
-    cluster: string
-    message: string
-    controller: {
-        kind: string
-        name: string
-        namespace: string
-        gorup?: string
-        version?: string
-        maxReplicas?: number
-        minReplicas?: number
-        currentReplicas?: number
-    }
-    impactObject: {
-        kind: string
-        name: string
-        namespace: string
-        group?: string
-        version?: string
-    }
+    heading: string;
+    kind: string;
+    name: string;
+    action: string;
+    clusterName: string;
+    namespace: string;
+    watcherName: string;
+    pipelineName: string;
+    viewResourceManifestLink: string;
+    interceptedAt: string;
+    color : string;
 }
 
 export interface ParsedCDEvent {

@@ -3,6 +3,7 @@ import moment from 'moment-timezone';
 import e, { json } from 'express';
 import {EVENT_TYPE, ParsedScoopNotification} from "./types";
 import { ciMaterials ,ParsedCIEvent,vulnerability,severityCount,WebhookParsedEvent,ParseApprovalEvent,ParseConfigApprovalEvent,ParsedCDEvent} from './types';
+import Mustache from "mustache";
 export class MustacheHelper {
     private CD_STAGE = {
         DEPLOY: "Deployment",
@@ -36,31 +37,18 @@ export class MustacheHelper {
     }
 
     parseScoopNotification(event: Event | any): ParsedScoopNotification {
-        const  clusterName = event?.cluster
-        const  message = event?.message
-        const  controller = event?.controller
-        const impactObject = event?.impactObject
-
         let parsedScoopNotification: ParsedScoopNotification = {
-            cluster: clusterName,
-            message: message,
-            controller: {
-                kind: controller?.kind,
-                name: controller?.name,
-                namespace: controller?.namespace,
-                gorup: controller?.group,
-                version: controller?.version,
-                maxReplicas: controller?.maxReplicas,
-                minReplicas: controller?.minReplicas,
-                currentReplicas: controller?.currentReplicas
-            },
-            impactObject: {
-                kind: impactObject?.kind,
-                name: impactObject?.name,
-                namespace: impactObject?.namespace,
-                group: impactObject?.group,
-                version: impactObject?.version
-            }
+            heading: event.payload.scoopNotificationConfig.data.heading,
+            kind: event.payload.scoopNotificationConfig.data.kind,
+            name: event.payload.scoopNotificationConfig.data.name,
+            action: event.payload.scoopNotificationConfig.data.action,
+            clusterName: event.payload.scoopNotificationConfig.data.clusterName,
+            namespace: event.payload.scoopNotificationConfig.data.namespace,
+            watcherName: event.payload.scoopNotificationConfig.data.watcherName,
+            pipelineName: event.payload.scoopNotificationConfig.data.pipelineName,
+            viewResourceManifestLink: event.payload.scoopNotificationConfig.data.viewResourceManifestLink,
+            interceptedAt: event.payload.scoopNotificationConfig.data.interceptedAt,
+            color: event.payload.scoopNotificationConfig.data.color
         }
 
         return parsedScoopNotification

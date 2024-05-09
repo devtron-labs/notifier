@@ -91,7 +91,7 @@ export class WebhookService implements Handler{
 
             let jsons : string = ''
             if (event.eventTypeId == EVENT_TYPE.ScoopNotification){
-                jsons = Mustache.render(template, event.payload.data);
+                jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
             }else {
                 let parsedEvent = this.mh.parseEventForWebhook(event as Event);
                 jsons = Mustache.render(template, parsedEvent);
