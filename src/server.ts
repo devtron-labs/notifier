@@ -29,6 +29,7 @@ import { WebhookService } from './destination/destinationHandlers/webhookHandler
 import { WebhookConfig } from './entities/webhookconfig';
 import * as process from "process";
 import bodyParser from 'body-parser';
+import {CustomError} from "./entities/events";
 const app = express();
 app.use(bodyParser.json({ limit: '10mb' }));
 
@@ -105,8 +106,22 @@ app.get('/test', (req, res) => {
 
 app.post('/notify', (req, res) => {
     logger.info("notifications Received")
-    notificationService.sendNotification(req.body)
-    res.send('notifications sent')
+    try{
+        notificationService.sendNotification(req.body, (error) => {
+            if (error) {
+                console.error(error);
+                // Handle error here, e.g., send an error response
+                res.status(error.statusCode).send(error.message);
+            } else {
+                // Notification sent successfully
+                //res.send('notifications sent');
+            }
+        });
+
+    }catch (error:any) {
+        console.log(error)
+    }
+
 });
 
 app.listen(3000, () => logger.info('Notifier app listening on port 3000!'))

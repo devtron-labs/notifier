@@ -8,6 +8,8 @@ import { WebhookService } from "../../destination/destinationHandlers/webhookHan
 import { SESService } from "../../destination/destinationHandlers/sesHandler";
 import { SMTPService } from "../../destination/destinationHandlers/smtpHandler";
 import { EVENT_TYPE } from "../../common/types";
+import {error} from "winston";
+import { CustomError } from "../../entities/events";
 
 
 export interface Handler {
@@ -32,12 +34,12 @@ class NotificationService {
     }
     public sendApprovalNotificaton(event:Event){
         if (!this.isValidEventForApproval(event)) {
-            return
+            throw new CustomError("Event is not valid for approval ",400)
         }
         this.logger.info('notificationSettingsRepository.findByEventSource')
           if (!event.payload.providers || event.payload.providers == 0) {
                 this.logger.info("no notification settings found for event " + event.correlationId);
-                return
+                throw new CustomError("no notification settings found for event",400)
             }
             let destinationMap = new Map();
             let configsMap = new Map();
@@ -53,7 +55,8 @@ class NotificationService {
                     this.templatesRepository.findByEventTypeId(event.eventTypeId).then((templateResults:NotificationTemplates[]) => {
                         if (!templateResults) {
                             this.logger.info("no templates found for event ", event);
-                            return
+                            throw new CustomError("no templates found for event",404)
+
                         }
                         let settings = new NotificationSettings()
                         settings.config = event.payload.providers
@@ -69,80 +72,99 @@ class NotificationService {
 
     }
 
-    public sendNotification(event: Event) {
-        if (event.payload.providers){
-            this.sendApprovalNotificaton(event)
-            return
-        }
-        if (!this.isValidEvent(event)) {
-            return
-        }
-
-        this.notificationSettingsRepository.findByEventSource(event.pipelineType, event.pipelineId, event.eventTypeId, event.appId, event.envId, event.teamId).then((settingsResults) => {
-          this.logger.info('notificationSettingsRepository.findByEventSource')
-          if (!settingsResults || settingsResults.length == 0) {
-                this.logger.info("no notification settings found for event " + event.correlationId);
-                return
+    public sendNotification(event: Event,callback: (error?: any) => void) {
+       try {
+            try {
+                if (event.payload.providers) {
+                    this.sendApprovalNotificaton(event)
+                    return
+                }
+            } catch (err: any) {
+                if (err instanceof CustomError) {
+                    throw err
+                }
+                throw new CustomError(err.message, 400)
             }
-            let destinationMap = new Map();
-            let configsMap = new Map();
-            this.logger.info("notification settings " );
-            this.logger.info(JSON.stringify(settingsResults))
-            settingsResults.forEach((setting) => {
-                const providerObjects = setting.config
-                const providersSet = new Set(providerObjects);
-                providersSet.forEach(p => {
-                    let id = p['dest'] + '-' + p['configId']
-                    configsMap.set(id, false)
-                });
-            });
+            if (!this.isValidEvent(event)) {
+                throw new CustomError("Event is not valid", 400)
+            }
 
-            settingsResults.forEach((setting) => {
-
-                const configArray =  setting.config as any;
-                if (Array.isArray(configArray)) {
-                  const webhookConfig = configArray.filter((config) => config.dest === 'webhook');
-
-                  if (webhookConfig.length) {
-                    const webhookConfigRepository = new WebhookConfigRepository();
-                    webhookConfig.forEach(config => {
-                        webhookConfigRepository.getAllWebhookConfigs().then((templateResults: WebhookConfig[]) => {
-                            const newTemplateResult = templateResults.filter((t) => t.id === config.configId);
-
-                            if (newTemplateResult.length === 0) {
-                              this.logger.info("no templates found for event ", event);
-                              return;
-                            }
-                            
-                            let ImageScanEvent = JSON.parse(JSON.stringify(event));
-                            if (!!event.payload.imageScanExecutionInfo){
-                                ImageScanEvent.payload.imageScanExecutionInfo = JSON.parse(JSON.stringify(event.payload.imageScanExecutionInfo[setting.id] ?? {}));
-                            }
-                            for (const h of this.handlers) {
-                              if (h instanceof WebhookService){
-                                if  (event.eventTypeId===EVENT_TYPE.ImageScan && !!event.payload.imageScanExecutionInfo){
-                                    h.handle(ImageScanEvent, newTemplateResult, setting, configsMap, destinationMap);
-                                }
-                                h.handle(event, newTemplateResult, setting, configsMap, destinationMap);
-                              }
-                            }
-                          });
+            this.notificationSettingsRepository.findByEventSource(event.pipelineType, event.pipelineId, event.eventTypeId, event.appId, event.envId, event.teamId).then((settingsResults) => {
+                this.logger.info('notificationSettingsRepository.findByEventSource')
+                if (!settingsResults || settingsResults.length == 0) {
+                    this.logger.info("no notification settings found for event " + event.correlationId);
+                    callback(new CustomError("no notification settings found for event", 404))
+                }
+                let destinationMap = new Map();
+                let configsMap = new Map();
+                this.logger.info("notification settings ");
+                this.logger.info(JSON.stringify(settingsResults))
+                settingsResults.forEach((setting) => {
+                    const providerObjects = setting.config
+                    const providersSet = new Set(providerObjects);
+                    providersSet.forEach(p => {
+                        let id = p['dest'] + '-' + p['configId']
+                        configsMap.set(id, false)
                     });
-                }
-                if (configArray.length > webhookConfig.length){
-                    this.templatesRepository.findByEventTypeIdAndNodeType(event.eventTypeId, event.pipelineType).then((templateResults:NotificationTemplates[]) => {
-                        if (!templateResults) {
-                            this.logger.info("no templates found for event ", event);
-                            return
+                });
+
+                settingsResults.forEach((setting) => {
+
+                    const configArray = setting.config as any;
+                    if (Array.isArray(configArray)) {
+                        const webhookConfig = configArray.filter((config) => config.dest === 'webhook');
+
+                        if (webhookConfig.length) {
+                            const webhookConfigRepository = new WebhookConfigRepository();
+                            webhookConfig.forEach(config => {
+                                webhookConfigRepository.getAllWebhookConfigs().then((templateResults: WebhookConfig[]) => {
+                                    const newTemplateResult = templateResults.filter((t) => t.id === config.configId);
+
+                                    if (newTemplateResult.length === 0) {
+                                        this.logger.info("no templates found for event ", event);
+                                        callback(new CustomError("no templates found for event", 404))
+                                    }
+
+                                    let ImageScanEvent = JSON.parse(JSON.stringify(event));
+                                    if (!!event.payload.imageScanExecutionInfo) {
+                                        ImageScanEvent.payload.imageScanExecutionInfo = JSON.parse(JSON.stringify(event.payload.imageScanExecutionInfo[setting.id] ?? {}));
+                                    }
+                                    for (const h of this.handlers) {
+                                        if (h instanceof WebhookService) {
+                                            if (event.eventTypeId === EVENT_TYPE.ImageScan && !!event.payload.imageScanExecutionInfo) {
+                                                h.handle(ImageScanEvent, newTemplateResult, setting, configsMap, destinationMap);
+                                            }
+                                            h.handle(event, newTemplateResult, setting, configsMap, destinationMap);
+                                        }
+                                    }
+                                });
+                            });
                         }
-                        for (let h of this.handlers) {
-                            h.handle(event, templateResults, setting, configsMap, destinationMap)
+                        if (configArray.length > webhookConfig.length) {
+                            this.templatesRepository.findByEventTypeIdAndNodeType(event.eventTypeId, event.pipelineType).then((templateResults: NotificationTemplates[]) => {
+                                if (!templateResults) {
+                                    this.logger.info("no templates found for event ", event);
+                                    callback(new CustomError("no templates found for event", 404))
+                                }
+                                for (let h of this.handlers) {
+                                    h.handle(event, templateResults, setting, configsMap, destinationMap)
+                                }
+                            })
                         }
-                    })
+                    }
+                });
+            }).catch(err => {
+                this.logger.error("err" + err)
+                if (err instanceof CustomError) {
+                    callback(err)
                 }
-            }
-            });
-        }).catch(err => this.logger.error("err" + err))
+                callback(new CustomError(err.message, 500))
+            })
+           callback()
+        }catch (error) {
+            // If an error occurs, call the callback with the error
+            callback(error);
+        }
     }
 
     private isValidEvent(event: Event) {

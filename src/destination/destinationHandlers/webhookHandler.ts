@@ -8,6 +8,7 @@ import {NotificationSettings} from "../../entities/notificationSettings";
 import { WebhookConfigRepository } from '../../repository/webhookConfigRepository';
 import {MustacheHelper} from '../../common/mustacheHelper';
 import axios from 'axios';
+import {CustomError} from "../../entities/events";
 
 export class WebhookService implements Handler{
     eventLogRepository: EventLogRepository
@@ -102,6 +103,7 @@ export class WebhookService implements Handler{
           return res.data;
         } catch (error) {
           this.logger.error("webhook sendNotification error", error);
+            throw new CustomError("Unable to send webhook notification",500);
         }
       }
 

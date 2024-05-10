@@ -9,6 +9,7 @@ import {NotificationTemplates} from "../../entities/notificationTemplates";
 import {UsersRepository} from "../../repository/usersRepository";
 import { SMTPConfigRepository } from '../../repository/smtpConfigRepository';
 import { MustacheHelper } from '../../common/mustacheHelper';
+import {CustomError} from "../../entities/events";
 
 //https://github.com/notifme/notifme-sdk/blob/master/src/models/notification-request.js#L132
 export class SMTPService implements Handler {
@@ -186,6 +187,7 @@ export class SMTPService implements Handler {
         } catch (error) {
             this.logger.error('SMTP sendNotification error', error)
             throw new Error('Unable to send SMTP notification');
+            throw new CustomError("Unable to send SMTP notification",500);
         }
     }
 
