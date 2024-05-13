@@ -82,12 +82,10 @@ export class PubSubServiceImpl implements PubSubService {
                 console.log("error occurred due to this:", err);
             }
         })
-
         // *******Creating/Updating stream
 
         const streamConfiguration = NatsStreamWiseConfigMapping.get(streamName)
         const streamConfigParsed = getStreamConfig(streamConfiguration, streamName)
-
         await this.addOrUpdateStream(streamName, streamConfigParsed)
 
         //******* Getting consumer configuration
@@ -101,7 +99,6 @@ export class PubSubServiceImpl implements PubSubService {
         // ********** Creating a consumer
 
         if (newConsumerFound) {
-            console.log("creating consumer")
             try {
                 await this.jsm.consumers.add(streamName, {
                     name: consumerName,
@@ -137,6 +134,7 @@ export class PubSubServiceImpl implements PubSubService {
         let updatesDetected: boolean = false
         try {
             const info: ConsumerInfo | null = await this.jsm.consumers.info(streamName, consumerName)
+            //console.log("infos",info)
             if (info) {
                 if (consumerConfiguration.ack_wait > 0 && info.config.ack_wait != consumerConfiguration.ack_wait) {
                     info.config.ack_wait = consumerConfiguration.ack_wait
@@ -178,12 +176,12 @@ export class PubSubServiceImpl implements PubSubService {
     async addOrUpdateStream(streamName: string, streamConfig: StreamConfig) {
         try {
             const Info: StreamInfo | null = await this.jsm.streams.info(streamName)
-            if (Info) {
+            //if (Info) {
                 if (await this.checkConfigChangeReqd(Info.config, streamConfig)) {
                     await this.jsm.streams.update(streamName, Info.config)
                     console.log("streams updated successfully")
                 }
-            }
+            //}
         } catch (err) {
             if (err instanceof NatsError) {
                 if (err.api_error.err_code === 10059) {
@@ -214,21 +212,27 @@ export class PubSubServiceImpl implements PubSubService {
             existingStreamInfo.max_age = toUpdateConfig.max_age
             configChanged = true
         }
-        if (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas > 0) {
-            if (toUpdateConfig.num_replicas > 0 && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas != existingStreamInfo.num_replicas) {
-                if (toUpdateConfig.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
-                    existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
-                    configChanged = true
-                } else if (toUpdateConfig.num_replicas > 1) {
-                    console.log("replicas >1 is not possible in non-clustered mode")
-                } else {
-                    existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
-                    configChanged = true
-
-                }
-
+        // if (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas > 0) {
+        //     if (toUpdateConfig.num_replicas > 0 && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas != existingStreamInfo.num_replicas) {
+        //         if (toUpdateConfig.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
+        //             existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
+        //             configChanged = true
+        //         } else if (toUpdateConfig.num_replicas > 1) {
+        //             console.log("replicas >1 is not possible in non-clustered mode")
+        //         } else {
+        //             existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
+        //             configChanged = true
+        //
+        //         }
+        //
+        //     }
+        // } // TODO : replicas thing to be done as next task
+            if (!existingStreamInfo.subjects.includes(toUpdateConfig.subjects[0])) { // filter subject if not present already
+                // If the value is not in the array, append it
+                existingStreamInfo.subjects.push(toUpdateConfig.subjects[0]);
+                configChanged = true
             }
-        }
+
         return configChanged
     }
 

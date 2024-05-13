@@ -70,7 +70,6 @@ class NotificationService {
     }
 
     public sendNotification(event: Event) {
-       this.logger.info("inside the sendNotification function",event)
         if (event.payload.providers){
             this.sendApprovalNotificaton(event)
             return

@@ -1,9 +1,9 @@
 import * as process from "process";
 
-export const NOTIFICATION_EVENT_TOPIC: string = "NOTIFICATION_EVENT_TOPIC2"
+export const NOTIFICATION_EVENT_TOPIC: string = "NOTIFICATION_EVENT_TOPIC"
 export const NOTIFICATION_EVENT_GROUP: string = "NOTIFICATION_EVENT_GROUP"
-export const NOTIFICATION_EVENT_DURABLE: string = "NOTIFICATION_EVENT_DURABLE5"
-export const ORCHESTRATOR_STREAM: string = "ORCHESTRATOR_test678"
+export const NOTIFICATION_EVENT_DURABLE: string = "NOTIFICATION_EVENT_DURABLE"
+export const ORCHESTRATOR_STREAM: string = "ORCHESTRATOR"
 const ackWait: number = parseInt(process.env.ACK_WAIT)
 const consumerReplica: number = parseInt(process.env.CONSUMER_REPLICAS)
 const maxAge: number = parseInt(process.env.MAX_AGE)

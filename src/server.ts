@@ -91,6 +91,21 @@ let dbOptions: ConnectionOptions = {
 }
 createConnection(dbOptions).then(async connection => {
     logger.info("Connected to DB")
+    if(natsUrl){
+        let conn: NatsConnection
+        (async () => {
+            logger.info("Connecting to NATS server...");
+            conn = await connect({servers: natsUrl})
+            const jsm = await conn.jetstreamManager()
+            const obj = new PubSubServiceImpl(conn, jsm)
+            await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
+        })().catch(
+            (err) => {
+                console.log("error occurred due to", err)
+            }
+        )
+    }
+
 }).catch(error => {
     logger.error("TypeORM connection error: ", error);
     logger.error("shutting down notifier due to un-successful database connection...")
@@ -101,31 +116,9 @@ const natsEventHandler = (msg: string) => {
     const eventAsString = JSON.parse(msg)
     const event = JSON.parse(eventAsString) as Event
     notificationService.sendNotification(event)
-    logger.info("call back function send notification is done",event)
 }
 
-if(natsUrl) {
-    let conn: NatsConnection
-    (async () => {
-        conn = await connect({servers: natsUrl})
-        const jsm = await conn.jetstreamManager()
-        const obj = new PubSubServiceImpl(conn, jsm)
-        await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
-        console.log("call back function is called")
-    })().catch(
-        (err) => {
-            console.log("error occurred due to", err)
-        }
-    )
-}
-else {
-    app.post('/notify',
-        (req, res) => {
-        logger.info("notifications Received")
-        notificationService.sendNotification(req.body)
-        res.send('notifications sent')
-    });
-}
+
 app.get('/', (req, res) => res.send('Welcome to notifier Notifier!'))
 
 app.get('/health', (req, res) => {
