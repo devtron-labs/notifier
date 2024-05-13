@@ -38,7 +38,7 @@ export class MustacheHelper {
 
     parseScoopNotification(event: Event | any): ParsedScoopNotification {
         let parsedScoopNotification: ParsedScoopNotification = {
-            heading: event.payload.scoopNotificationConfig.data.heading,
+            heading: 'Change: Resource '+ event.payload.scoopNotificationConfig.data.action,
             kind: event.payload.scoopNotificationConfig.data.kind,
             resourceName: event.payload.scoopNotificationConfig.data.name,
             action: event.payload.scoopNotificationConfig.data.action,
