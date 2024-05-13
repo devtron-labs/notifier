@@ -28,8 +28,8 @@ import {WebhookService} from './destination/destinationHandlers/webhookHandler';
 import {WebhookConfig} from './entities/webhookconfig';
 import * as process from "process";
 import {connect, NatsConnection} from "nats";
-import {NOTIFICATION_EVENT_TOPIC} from "./pub_sub/utils";
-import {PubSubServiceImpl} from "./pub_sub/pub_sub";
+import {NOTIFICATION_EVENT_TOPIC} from "./pubSub/utils";
+import {PubSubServiceImpl} from "./pubSub/pubSub";
 import {send} from "./tests/sendSlackNotification";
 
 const app = express();
@@ -97,7 +97,7 @@ createConnection(dbOptions).then(async connection => {
             logger.info("Connecting to NATS server...");
             conn = await connect({servers: natsUrl})
             const jsm = await conn.jetstreamManager()
-            const obj = new PubSubServiceImpl(conn, jsm)
+            const obj = new PubSubServiceImpl(conn, jsm,logger)
             await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
         })().catch(
             (err) => {
@@ -129,6 +129,10 @@ app.get('/test', (req, res) => {
     send();
     res.send('Test!');
 })
-
+app.post('/notify', (req, res) => {
+    logger.info("notifications Received")
+    notificationService.sendNotification(req.body)
+    res.send('notifications sent')
+});
 
 app.listen(3000, () => logger.info('Notifier app listening on port 3000!'))

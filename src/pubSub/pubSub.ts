@@ -41,13 +41,14 @@ export class PubSubServiceImpl implements PubSubService {
     private nc: NatsConnection
     private js: JetStreamClient
     private jsm: JetStreamManager
+    private logger: any
 
 
-    constructor(conn: NatsConnection, jsm: JetStreamManager) {
+    constructor(conn: NatsConnection, jsm: JetStreamManager, logger: any) {
         this.nc = conn
         this.js = this.nc.jetstream()
         this.jsm = jsm
-
+        this.logger = logger
     }
 
     // ********** Subscribe function provided by consumer
@@ -68,18 +69,13 @@ export class PubSubServiceImpl implements PubSubService {
 
 
         }).bindStream(streamName).callback((err, msg) => {
-            console.log("got nats msg ,msgId:", msg.headers.get("Nats-Msg-Id"));
 
             try {
                 const msgString = getJsonString(msg.data)
                 callback(msgString)
                 msg.ack();
-
-                console.log("acked msg ,msgId:", msg.headers.get("Nats-Msg-Id"));
-
-
             } catch (err) {
-                console.log("error occurred due to this:", err);
+                this.logger.error("error occurred due to this:", err);
             }
         })
         // *******Creating/Updating stream
@@ -109,9 +105,9 @@ export class PubSubServiceImpl implements PubSubService {
                     filter_subject: topic,
 
                 })
-                console.log("consumer added successfully")
+                this.logger.info("consumer added successfully")
             } catch (err) {
-                console.log("error occurred while adding consumer", err)
+                this.logger.error("error occurred while adding consumer", err)
             }
 
 
@@ -120,10 +116,10 @@ export class PubSubServiceImpl implements PubSubService {
         // *********  Nats Subscribe() function
         try {
             await this.js.subscribe(topic, consumerOptsDetails)
-            console.log("subscribed to nats successfully")
+            this.logger.info("subscribed to nats successfully")
 
         } catch (err) {
-            console.log("error occurred while subscribing", err)
+            this.logger.error("error occurred while subscribing", err)
         }
 
 
@@ -140,29 +136,29 @@ export class PubSubServiceImpl implements PubSubService {
                     info.config.ack_wait = consumerConfiguration.ack_wait
                     updatesDetected = true
                 }
-                if (consumerConfiguration.num_replicas > 0 && consumerConfiguration.num_replicas < 5 && info.config.num_replicas != consumerConfiguration.num_replicas) {
-                    if (consumerConfiguration.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
-                        info.config.num_replicas = consumerConfiguration.num_replicas
-                        updatesDetected = true
-                    } else if (consumerConfiguration.num_replicas > 1) {
-                        console.log("replicas >1 is not possible in non-clustered mode")
-                    } else {
-                        info.config.num_replicas = consumerConfiguration.num_replicas
-                        updatesDetected = true
-
-                    }
-
-                }
+                // if (consumerConfiguration.num_replicas > 0 && consumerConfiguration.num_replicas < 5 && info.config.num_replicas != consumerConfiguration.num_replicas) {
+                //     if (consumerConfiguration.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
+                //         info.config.num_replicas = consumerConfiguration.num_replicas
+                //         updatesDetected = true
+                //     } else if (consumerConfiguration.num_replicas > 1) {
+                //         console.log("replicas >1 is not possible in non-clustered mode")
+                //     } else {
+                //         info.config.num_replicas = consumerConfiguration.num_replicas
+                //         updatesDetected = true
+                //
+                //     }
+                //
+                // }// TODO : replicas thing to be done as next task
                 if (updatesDetected === true) {
 
                     await this.jsm.consumers.update(streamName, consumerName, info.config)
-                    console.log("consumer updated successfully, consumerName: ", consumerName)
+                    this.logger.info("consumer updated successfully, consumerName: ", consumerName)
 
                 }
             }
         } catch (err) {
             if (err instanceof NatsError) {
-                console.log("error occurred due to reason:", err)
+                this.logger.error("error occurred due to reason:", err)
 
                 if (err.api_error.err_code === 10014) {
                     return true
@@ -176,12 +172,12 @@ export class PubSubServiceImpl implements PubSubService {
     async addOrUpdateStream(streamName: string, streamConfig: StreamConfig) {
         try {
             const Info: StreamInfo | null = await this.jsm.streams.info(streamName)
-            //if (Info) {
+            if (Info) {
                 if (await this.checkConfigChangeReqd(Info.config, streamConfig)) {
                     await this.jsm.streams.update(streamName, Info.config)
-                    console.log("streams updated successfully")
+                    this.logger.info("streams updated successfully")
                 }
-            //}
+            }
         } catch (err) {
             if (err instanceof NatsError) {
                 if (err.api_error.err_code === 10059) {
@@ -190,14 +186,14 @@ export class PubSubServiceImpl implements PubSubService {
                     streamConfig.name = streamName
                     try {
                         await this.jsm.streams.add(streamConfig)
-                        console.log(" stream added successfully")
+                        this.logger.info(" stream added successfully")
                     } catch (err) {
-                        console.log("error occurred during adding streams", err)
+                        this.logger.error("error occurred during adding streams", err)
                     }
 
 
                 } else {
-                    console.log("error occurred due to :", err)
+                    this.logger.error("error occurred due to :", err)
                 }
 
             }
