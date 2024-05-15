@@ -88,7 +88,10 @@ export class WebhookService implements Handler{
 
     public async sendNotification(event: Event, webhookUrl: string, template: string, headers?: Record<string, string>) {
         try {
-
+            if(!template){
+                this.logger.error("template is empty")
+                return
+            }
             let jsons : string = ''
             if (event.eventTypeId == EVENT_TYPE.ScoopNotification){
                 jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
