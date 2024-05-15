@@ -9,6 +9,7 @@ import { WebhookConfigRepository } from '../../repository/webhookConfigRepositor
 import {MustacheHelper} from '../../common/mustacheHelper';
 import axios from 'axios';
 import {EVENT_TYPE, WebhookParsedEvent} from "../../common/types";
+import moment from "moment-timezone";
 
 export class WebhookService implements Handler{
     eventLogRepository: EventLogRepository
@@ -94,6 +95,8 @@ export class WebhookService implements Handler{
             }
             let jsons : string = ''
             if (event.eventTypeId == EVENT_TYPE.ScoopNotification){
+                const date = moment(event.eventTime);
+                event.payload.scoopNotificationConfig.data.interceptedAt = date.unix();
                 jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
             }else {
                 let parsedEvent = this.mh.parseEventForWebhook(event as Event);

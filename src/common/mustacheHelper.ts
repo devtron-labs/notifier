@@ -37,6 +37,8 @@ export class MustacheHelper {
     }
 
     parseScoopNotification(event: Event | any): ParsedScoopNotification {
+        const date = moment(event.payload.scoopNotificationConfig.data.interceptedAt);
+        const timestamp = date.format('dddd, MMMM Do YYYY hh:mm A [GMT]Z');
         let parsedScoopNotification: ParsedScoopNotification = {
             heading: 'Change: Resource '+ event.payload.scoopNotificationConfig.data.action,
             kind: event.payload.scoopNotificationConfig.data.kind,
@@ -47,7 +49,7 @@ export class MustacheHelper {
             watcherName: event.payload.scoopNotificationConfig.data.watcherName,
             pipelineName: event.payload.scoopNotificationConfig.data.pipelineName,
             viewResourceManifestLink: event.payload.scoopNotificationConfig.data.viewResourceManifestLink,
-            interceptedAt: event.payload.scoopNotificationConfig.data.interceptedAt,
+            interceptedAt: timestamp,
             color: event.payload.scoopNotificationConfig.data.color
         }
 

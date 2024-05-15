@@ -9,6 +9,7 @@ import {NotificationSettings} from "../../entities/notificationSettings";
 import {SlackConfigRepository} from "../../repository/slackConfigRepository";
 import {MustacheHelper} from '../../common/mustacheHelper';
 import {EVENT_TYPE} from "../../common/types";
+import moment from "moment-timezone";
 
 //https://github.com/notifme/notifme-sdk/blob/master/src/models/notification-request.js#L132
 export class SlackService implements Handler {
@@ -110,6 +111,8 @@ export class SlackService implements Handler {
 
             let jsons: string = ''
             if (event.eventTypeId == EVENT_TYPE.ScoopNotification){
+                const date = moment(event.eventTime);
+                event.payload.scoopNotificationConfig.data.interceptedAt = date.unix();
                 jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
             }else{
                 let parsedEvent = this.mh.parseEvent(event as Event, true);
