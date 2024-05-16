@@ -119,16 +119,16 @@ const natsEventHandler = (msg: string) => {
 }
 
 
-app.get('/', (req, res) => res.send('Welcome to notifier Notifier!'))
-
-app.get('/health', (req, res) => {
-    res.status(200).send("healthy")
-})
-
-app.get('/test', (req, res) => {
-    send();
-    res.send('Test!');
-})
+// app.get('/', (req, res) => res.send('Welcome to notifier Notifier!'))
+//
+// app.get('/health', (req, res) => {
+//     res.status(200).send("healthy")
+// })
+//
+// app.get('/test', (req, res) => {
+//     send();
+//     res.send('Test!');
+// })
 app.post('/notify', (req, res) => {
     logger.info("notifications Received")
     notificationService.sendNotification(req.body)
