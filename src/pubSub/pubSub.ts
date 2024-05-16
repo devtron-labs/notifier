@@ -130,25 +130,11 @@ export class PubSubServiceImpl implements PubSubService {
         let updatesDetected: boolean = false
         try {
             const info: ConsumerInfo | null = await this.jsm.consumers.info(streamName, consumerName)
-            //console.log("infos",info)
             if (info) {
                 if (consumerConfiguration.ack_wait > 0 && info.config.ack_wait != consumerConfiguration.ack_wait) {
                     info.config.ack_wait = consumerConfiguration.ack_wait
                     updatesDetected = true
                 }
-                // if (consumerConfiguration.num_replicas > 0 && consumerConfiguration.num_replicas < 5 && info.config.num_replicas != consumerConfiguration.num_replicas) {
-                //     if (consumerConfiguration.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
-                //         info.config.num_replicas = consumerConfiguration.num_replicas
-                //         updatesDetected = true
-                //     } else if (consumerConfiguration.num_replicas > 1) {
-                //         console.log("replicas >1 is not possible in non-clustered mode")
-                //     } else {
-                //         info.config.num_replicas = consumerConfiguration.num_replicas
-                //         updatesDetected = true
-                //
-                //     }
-                //
-                // }// TODO : replicas thing to be done as next task
                 if (updatesDetected === true) {
 
                     await this.jsm.consumers.update(streamName, consumerName, info.config)
@@ -208,21 +194,6 @@ export class PubSubServiceImpl implements PubSubService {
             existingStreamInfo.max_age = toUpdateConfig.max_age
             configChanged = true
         }
-        // if (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas > 0) {
-        //     if (toUpdateConfig.num_replicas > 0 && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas != existingStreamInfo.num_replicas) {
-        //         if (toUpdateConfig.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
-        //             existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
-        //             configChanged = true
-        //         } else if (toUpdateConfig.num_replicas > 1) {
-        //             console.log("replicas >1 is not possible in non-clustered mode")
-        //         } else {
-        //             existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
-        //             configChanged = true
-        //
-        //         }
-        //
-        //     }
-        // } // TODO : replicas thing to be done as next task
             if (!existingStreamInfo.subjects.includes(toUpdateConfig.subjects[0])) { // filter subject if not present already
                 // If the value is not in the array, append it
                 existingStreamInfo.subjects.push(toUpdateConfig.subjects[0]);
@@ -248,71 +219,4 @@ function getStreamConfig(streamConfig: NatsStreamConfig, streamName: string) {
         subjects: GetStreamSubjects(streamName),
     } as StreamConfig
 }
-
-//
-// function checkConfigChangeReqd(existingStreamInfo: StreamConfig, toUpdateConfig: StreamConfig) {
-//     let configChanged: Boolean = false
-//     if (toUpdateConfig.max_age != 0 && (toUpdateConfig.max_age != existingStreamInfo.max_age)) {
-//         existingStreamInfo.max_age = toUpdateConfig.max_age
-//         configChanged = true
-//     }
-//     if (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas > 0) {
-//
-//
-//         if (toUpdateConfig.num_replicas > 0 && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas != existingStreamInfo.num_replicas) {
-//             if (toUpdateConfig.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
-//                 existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
-//                 configChanged = true
-//             } else if (toUpdateConfig.num_replicas > 1) {
-//                 console.log("replicas >1 is not possible in non-clustered mode")
-//             } else {
-//                 existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
-//                 configChanged = true
-//
-//             }
-//
-//         }
-//     }
-//     return configChanged
-// }
-
-//
-// function getNewConfig(stream: string, toUpdateConfig: StreamConfig): (StreamConfig) {
-//     const cfg: StreamConfig = {
-//         allow_direct: false,
-//         allow_rollup_hdrs: false,
-//         deny_delete: false,
-//         deny_purge: false,
-//         discard: undefined,
-//         discard_new_per_subject: false,
-//         duplicate_window: 0,
-//         max_age: 0,
-//         max_bytes: 0,
-//         max_consumers: 0,
-//         max_msg_size: 0,
-//         max_msgs: 0,
-//         max_msgs_per_subject: 0,
-//         mirror_direct: false,
-//         num_replicas: 0,
-//         retention: undefined,
-//         sealed: false,
-//         storage: undefined,
-//         subjects: GetStreamSubjects(stream),
-//         name: stream
-//
-//     }
-//
-//     if (toUpdateConfig.max_age != 0) {
-//         cfg.max_age = toUpdateConfig.max_age
-//     }
-//     if (toUpdateConfig.num_replicas > 0) {
-//         cfg.num_replicas = toUpdateConfig.num_replicas
-//     }
-//     if (toUpdateConfig.retention != RetentionPolicy.Limits) {
-//         cfg.retention = toUpdateConfig.retention
-//     }
-//     return cfg
-//
-//
-// }
 
