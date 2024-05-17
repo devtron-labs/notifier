@@ -104,23 +104,11 @@ app.get('/test', (req, res) => {
     res.send('Test!');
 })
 
-app.post('/notify', (req, res) => {
+app.post('/notify', async(req, res) => {
     logger.info("notifications Received")
-    try{
-        notificationService.sendNotification(req.body, (error) => {
-            if (error) {
-                console.error(error);
-                // Handle error here, e.g., send an error response
-                res.status(error.statusCode).send(error.message);
-            } else {
-                // Notification sent successfully
-                //res.send('notifications sent');
-            }
-        });
 
-    }catch (error:any) {
-        console.log(error)
-    }
+       let result=await notificationService.sendNotification(req.body);
+        res.status(result.statusCode).json({message:result.message}).send()
 
 });
 
