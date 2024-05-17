@@ -159,6 +159,7 @@ class NotificationService {
                         }
                     }
                 }
+           this.logger.info("notification sent",91);
            return await new CustomError("notification sent",200)
         }catch (error:any) {
            return await error instanceof CustomError?error:new CustomError(error.message,400)
