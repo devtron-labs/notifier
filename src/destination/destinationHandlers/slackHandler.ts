@@ -8,6 +8,8 @@ import {NotificationTemplates} from "../../entities/notificationTemplates";
 import {NotificationSettings} from "../../entities/notificationSettings";
 import {SlackConfigRepository} from "../../repository/slackConfigRepository";
 import {MustacheHelper} from '../../common/mustacheHelper';
+import {EVENT_TYPE} from "../../common/types";
+import moment from "moment-timezone";
 
 //https://github.com/notifme/notifme-sdk/blob/master/src/models/notification-request.js#L132
 export class SlackService implements Handler {
@@ -90,20 +92,33 @@ export class SlackService implements Handler {
                     });
                 })
             } else {
-                this.sendNotification(event, sdk, slackTemplate.template_payload).then(result => {
-                    this.saveNotificationEventSuccessLog(result, event, p, setting);
-                }).catch((error) => {
-                    this.logger.error(error.message);
-                    this.saveNotificationEventFailureLog(event, p, setting);
-                });
+                this.sendAndLogNotification(event, sdk, setting, p, slackTemplate);
             }
         })
     }
 
+    public sendAndLogNotification(event: Event, sdk: NotifmeSdk, setting: NotificationSettings, p: any, slackTemplate: NotificationTemplates){
+        this.sendNotification(event, sdk, slackTemplate.template_payload).then(result => {
+            this.saveNotificationEventSuccessLog(result, event, p, setting);
+        }).catch((error) => {
+            this.logger.error(error.message);
+            this.saveNotificationEventFailureLog(event, p, setting);
+        });
+    }
+
     public async sendNotification(event: Event, sdk: NotifmeSdk, template: string) {
         try {
-            let parsedEvent = this.mh.parseEvent(event as Event, true);
-            let jsons = Mustache.render(template, parsedEvent);
+
+            let jsons: string = ''
+            if (event.eventTypeId == EVENT_TYPE.ScoopNotification){
+                const date = moment(event.eventTime);
+                event.payload.scoopNotificationConfig.data.interceptedAt = date.unix();
+                jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
+            }else{
+                let parsedEvent = this.mh.parseEvent(event as Event, true);
+                jsons = Mustache.render(template, parsedEvent);
+            }
+
             let j = JSON.parse(jsons)
             const res = await sdk.send(
                 {

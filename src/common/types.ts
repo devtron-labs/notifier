@@ -80,6 +80,21 @@ export interface ParseConfigApprovalEvent {
     protectConfigLink?: string;
     approvalLink?: string;
 }
+
+export interface ParsedScoopNotification {
+    heading: string;
+    kind: string;
+    resourceName: string;
+    action: string;
+    clusterName: string;
+    namespace: string;
+    watcherName: string;
+    pipelineName: string;
+    viewResourceManifestLink: string;
+    interceptedAt: string;
+    color : string;
+}
+
 export interface ParsedCDEvent {
     eventTime: number | string;
     triggeredBy: string;
@@ -111,7 +126,7 @@ export enum EVENT_TYPE {
     ConfigApproval = 5,
     Blocked = 6,
     ImagePromotion = 7,
-    ImageScan = 8
-
+    ImageScan = 8,
+    ScoopNotification = 9,
 }
 

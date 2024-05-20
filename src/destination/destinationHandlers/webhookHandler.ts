@@ -8,6 +8,8 @@ import {NotificationSettings} from "../../entities/notificationSettings";
 import { WebhookConfigRepository } from '../../repository/webhookConfigRepository';
 import {MustacheHelper} from '../../common/mustacheHelper';
 import axios from 'axios';
+import {EVENT_TYPE, WebhookParsedEvent} from "../../common/types";
+import moment from "moment-timezone";
 
 export class WebhookService implements Handler{
     eventLogRepository: EventLogRepository
@@ -48,7 +50,7 @@ export class WebhookService implements Handler{
 
     }
 
-    private sendAndLogNotification(event: Event, webhookTemplate: WebhookConfig, setting: NotificationSettings, p: string) {
+    public sendAndLogNotification(event: Event, webhookTemplate: WebhookConfig, setting: NotificationSettings, p: any) {
         const payload=typeof webhookTemplate.payload==="object"?JSON.stringify(webhookTemplate.payload) : webhookTemplate.payload;
         this.sendNotification(event, webhookTemplate.web_hook_url, payload,webhookTemplate.header).then(result => {
             this.saveNotificationEventSuccessLog(result, event, p, setting);
@@ -87,25 +89,34 @@ export class WebhookService implements Handler{
 
     public async sendNotification(event: Event, webhookUrl: string, template: string, headers?: Record<string, string>) {
         try {
-          let parsedEvent = this.mh.parseEventForWebhook(event as Event);
-          let jsons = Mustache.render(template, parsedEvent);
-          let j = JSON.parse(jsons);
+            if(!template){
+                this.logger.error("template is empty")
+                return
+            }
+            let jsons : string = ''
+            if (event.eventTypeId == EVENT_TYPE.ScoopNotification){
+                const date = moment(event.eventTime);
+                event.payload.scoopNotificationConfig.data.interceptedAt = date.unix();
+                jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
+            }else {
+                let parsedEvent = this.mh.parseEventForWebhook(event as Event);
+                jsons = Mustache.render(template, parsedEvent);
+            }
 
-          const headerConfig = { headers: {} };
+            let j = JSON.parse(jsons);
+            const headerConfig = { headers: {} };
 
-          if (headers) {
-            headerConfig.headers = headers;
-          }
-          const res = await axios.post(webhookUrl, j, headerConfig);
-          this.logger.info("Notification Sent Successfully");
-          console.log(res.data);
-          return res.data;
+            if (headers) {
+                headerConfig.headers = headers;
+            }
+            const res = await axios.post(webhookUrl, j, headerConfig);
+            this.logger.info("Notification Sent Successfully");
+            console.log(res.data);
+            return res.data;
         } catch (error) {
-          this.logger.error("webhook sendNotification error", error);
+            this.logger.error("webhook sendNotification error", error);
         }
       }
-
-
 
     private saveNotificationEventSuccessLog(result: any, event: Event, p: any, setting: NotificationSettings) {
         
