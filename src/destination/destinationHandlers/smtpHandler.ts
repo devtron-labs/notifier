@@ -96,14 +96,25 @@ export class SMTPService implements Handler {
           type: "smtp",
           port: smtpConfig["port"],
           host: smtpConfig["host"],
+        //   authMethod: 'PLAIN',
         };
 
         // Conditionally add the auth object
-        if ((smtpConfig["auth_user"] !== '') && (smtpConfig["auth_password"] !== '')){
+        if ((smtpConfig["auth_user"]) && (smtpConfig["auth_password"])){
           emailProviderConfig.auth = {
             user: smtpConfig["auth_user"],
             pass: smtpConfig["auth_password"],
           };
+        }else{
+            emailProviderConfig.auth={
+                type: 'custom',
+                id: smtpConfig["host"]+":"+smtpConfig["port"],
+            }
+            // emailProviderConfig.customAuth= {
+            //     'MY-CUSTOM-METHOD': ctx => {
+            //         ctx.resolve()
+            //     }}
+            // emailProviderConfig
         }
 
         // Create the NotifmeSdk instance
