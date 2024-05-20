@@ -106,10 +106,8 @@ app.get('/test', (req, res) => {
 
 app.post('/notify', async(req, res) => {
     logger.info("notifications Received")
-
        let result=await notificationService.sendNotification(req.body);
         res.status(result.statusCode).json({message:result.message}).send()
-
 });
 
 app.listen(3000, () => logger.info('Notifier app listening on port 3000!'))

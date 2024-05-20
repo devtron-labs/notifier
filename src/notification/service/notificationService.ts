@@ -89,12 +89,10 @@ class NotificationService {
             }
 
              let settingsResults=await this.notificationSettingsRepository.findByEventSource(event.pipelineType, event.pipelineId, event.eventTypeId, event.appId, event.envId, event.teamId)
-                 //.then((settingsResults) => {
+
                  this.logger.info('notificationSettingsRepository.findByEventSource')
                if (!settingsResults || settingsResults.length == 0) {
                     this.logger.info("no notification settings found for event " + event.correlationId);
-                    //return
-                    //callback(res.status(404).json({message:"no notification settings found for event" }))
                    return await new CustomError("no notification settings found for event",404)
                 }
                 let destinationMap = new Map();
@@ -120,7 +118,6 @@ class NotificationService {
                             const webhookConfigRepository = new WebhookConfigRepository();
                             for (const config of webhookConfig) {
                                let templateResults=await webhookConfigRepository.getAllWebhookConfigs()
-                                   // .then((templateResults: WebhookConfig[]) => {
                                     const newTemplateResult = templateResults.filter((t) => t.id === config.configId);
 
                                     if (newTemplateResult.length === 0) {
@@ -145,12 +142,8 @@ class NotificationService {
                         }
                         if (configArray.length > webhookConfig.length) {
                            let templateResults=  await this.templatesRepository.findByEventTypeIdAndNodeType(event.eventTypeId, event.pipelineType)
-                                //.then((templateResults: NotificationTemplates[]) => {
-
-                            // })
                             if (!templateResults) {
                                 this.logger.info("no templates found for event ", event);
-
                                 return new CustomError("no templates found for event", 404);
                             }
                             for (let h of this.handlers) {
@@ -159,7 +152,7 @@ class NotificationService {
                         }
                     }
                 }
-           this.logger.info("notification sent",91);
+           this.logger.info("notification sent");
            return await new CustomError("notification sent",200)
         }catch (error:any) {
            return await error instanceof CustomError?error:new CustomError(error.message,400)
