@@ -29,7 +29,6 @@ import { WebhookService } from './destination/destinationHandlers/webhookHandler
 import { WebhookConfig } from './entities/webhookconfig';
 import * as process from "process";
 import bodyParser from 'body-parser';
-import {CustomError} from "./entities/events";
 const app = express();
 app.use(bodyParser.json({ limit: '10mb' }));
 
@@ -106,7 +105,7 @@ app.get('/test', (req, res) => {
 
 app.post('/notify', async(req, res) => {
     logger.info("notifications Received")
-       let result=await notificationService.sendNotification(req.body);
+       const result=await notificationService.sendNotification(req.body);
         res.status(result.statusCode).json({message:result.message}).send()
 });
 

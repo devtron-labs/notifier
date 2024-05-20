@@ -186,7 +186,6 @@ export class SMTPService implements Handler {
             return res;
         } catch (error) {
             this.logger.error('SMTP sendNotification error', error)
-            throw new Error('Unable to send SMTP notification');
             throw new CustomError("Unable to send SMTP notification",500);
         }
     }

@@ -8,18 +8,16 @@ import { WebhookService } from "../../destination/destinationHandlers/webhookHan
 import { SESService } from "../../destination/destinationHandlers/sesHandler";
 import { SMTPService } from "../../destination/destinationHandlers/smtpHandler";
 import { EVENT_TYPE } from "../../common/types";
-import {error} from "winston";
+
 import { CustomError } from "../../entities/events";
-import { Response } from 'express';
+
 
 export interface Handler {
     handle(event: Event, templates: (NotificationTemplates[] | WebhookConfig[]), setting: NotificationSettings, configMap: Map<string, boolean>, destinationMap: Map<string, boolean>): boolean
 
     sendNotification(event: Event, sdk: any, template: string)
 }
-interface CustomResponse<T> extends Response<any, Record<string, any>> {
-    // Specify custom properties or methods here, if needed
-}
+
 
 class NotificationService {
     private eventRepository: EventRepository
@@ -88,12 +86,12 @@ class NotificationService {
                 throw new CustomError("Event is not valid", 400)
             }
 
-             let settingsResults=await this.notificationSettingsRepository.findByEventSource(event.pipelineType, event.pipelineId, event.eventTypeId, event.appId, event.envId, event.teamId)
+             const settingsResults=await this.notificationSettingsRepository.findByEventSource(event.pipelineType, event.pipelineId, event.eventTypeId, event.appId, event.envId, event.teamId)
 
                  this.logger.info('notificationSettingsRepository.findByEventSource')
                if (!settingsResults || settingsResults.length == 0) {
                     this.logger.info("no notification settings found for event " + event.correlationId);
-                   return await new CustomError("no notification settings found for event",404)
+                   return  new CustomError("no notification settings found for event",404)
                 }
                 let destinationMap = new Map();
                 let configsMap = new Map();
@@ -122,7 +120,7 @@ class NotificationService {
 
                                     if (newTemplateResult.length === 0) {
                                         this.logger.info("no templates found for event ", event);
-                                        return await new CustomError("no templates found for event", 404);
+                                        return  new CustomError("no templates found for event", 404);
                                     }
 
                                     let ImageScanEvent = JSON.parse(JSON.stringify(event));
