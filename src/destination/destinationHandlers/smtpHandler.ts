@@ -22,7 +22,6 @@ export class SMTPService implements Handler {
         port: string
         host: string
         auth_user: string
-        auth_type:string
         auth_password: string
         from_email: string
     }
@@ -63,7 +62,6 @@ export class SMTPService implements Handler {
                 port: config['port'],
                 host: config['host'],
                 auth_user: config['auth_user'],
-                auth_type: config["auth_type"],
                 auth_password: config['auth_password'],
                 from_email: config['from_email']
             }
@@ -93,28 +91,19 @@ export class SMTPService implements Handler {
 
     private preparePaylodAndSend(event: Event, smtpTemplate: NotificationTemplates, setting: NotificationSettings, p: string){
         const smtpConfig = this.smtpConfig;
-        // const authMethod = 'PLAIN';
-
         // Create the email provider configuration
         let emailProviderConfig: any = {
           type: "smtp",
           port: smtpConfig["port"],
           host: smtpConfig["host"],
-        //   authMethod: 'PLAIN',
-        //   tls: {
-        //     // do not fail on invalid certs
-        //     rejectUnauthorized: false,
-        //   },
         };
 
-        // Conditionally add the auth object if authMethod is not 0
-        if (smtpConfig["auth_user"] !== '') {
+        // Conditionally add the auth object
+        if ((smtpConfig["auth_user"] !== '') && (smtpConfig["auth_password"] !== '')){
           emailProviderConfig.auth = {
             user: smtpConfig["auth_user"],
             pass: smtpConfig["auth_password"],
           };
-        }else{
-            emailProviderConfig.authMethod= 'No Authentication'
         }
 
         // Create the NotifmeSdk instance
@@ -125,22 +114,6 @@ export class SMTPService implements Handler {
             },
           },
         });
-        // let sdk: NotifmeSdk = new NotifmeSdk({
-        //     channels: {
-        //         email: {
-        //             providers: [{
-        //                 type: 'smtp',
-        //                 port: 1025,
-        //                 host: "localhost",
-        //                 authMethod:0,
-        //                 auth:{
-        //                     // user: this.smtpConfig['auth_user'],
-        //                     // pass: this.smtpConfig['auth_password'],
-        //                 }
-        //             }]
-        //         }
-        //     }
-        // });
         event.payload['fromEmail'] = this.smtpConfig['from_email']
         let engine = new Engine();
         // let options = { allowUndefinedFacts: true }
