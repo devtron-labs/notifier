@@ -56,14 +56,14 @@ export class MustacheHelper {
         return parsedScoopNotification
     }
 
-    parseEvent(event: Event, isSlackNotification?: boolean): ParsedCIEvent | ParsedCDEvent | ParseApprovalEvent | ParseConfigApprovalEvent | ParsedScoopNotification{
+    parseEvent(event: Event, isSlackNotification?: boolean): ParsedCIEvent | ParsedCDEvent | ParseApprovalEvent | ParseConfigApprovalEvent | ParseArtifactPromotionEvent | ParsedScoopNotification{
         if(event.eventTypeId===EVENT_TYPE.ScoopNotification){
             return this.parseScoopNotification(event)
         }
         let baseURL = event.baseUrl;
         let material = event.payload.material;
         let ciMaterials;
-        if (event.eventTypeId!==EVENT_TYPE.Approval && event.eventTypeId!==EVENT_TYPE.ConfigApproval){
+        if (event.eventTypeId!==EVENT_TYPE.Approval && event.eventTypeId!==EVENT_TYPE.ConfigApproval && event.eventTypeId!=EVENT_TYPE.ImagePromotion){
         ciMaterials = material.ciMaterials ? material.ciMaterials.map((ci) => {
             if (material && material.gitTriggers && material.gitTriggers[ci.id]) {
                 let trigger = material.gitTriggers[ci.id];
@@ -128,7 +128,7 @@ export class MustacheHelper {
             if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.indexOf(":");
             if (baseURL && event.payload.appDetailLink) appDetailsLink = `${baseURL}${event.payload.appDetailLink}`;
             if (baseURL && event.payload.deploymentHistoryLink) deploymentHistoryLink = `${baseURL}${event.payload.deploymentHistoryLink}`;
-    
+
             return {
                 eventTime: timestamp,
                 triggeredBy: event.payload.triggeredBy || "NA",
@@ -189,7 +189,30 @@ export class MustacheHelper {
                 protectConfigLink:protectConfigLink,
                 approvalLink:approvalLink,
             }
-            
+        }
+        else if (event.eventTypeId === EVENT_TYPE.ImagePromotion ){
+
+            let artifactPromotionRequestViewLink : string   = `${baseURL}${event.payload?.artifactPromotionRequestViewLink}`
+            let artifactPromotionApprovalLink = `${baseURL}${event.payload?.artifactPromotionApprovalLink}`
+            let imageTagNames = event.payload?.imageTagNames
+            let imageComment = event.payload?.imageComment
+            let imagePromotionSource = event.payload?.promotionArtifactSource
+            let envName  = event.payload?.envName
+            let index = -1;
+            if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
+
+            return {
+                eventTime: timestamp,
+                triggeredBy: event.payload.triggeredBy || "NA",
+                appName: event.payload.appName || "NA",
+                envName: event.payload.envName || envName,
+                imageTag: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
+                tags: imageTagNames,
+                comment: imageComment,
+                promotionArtifactSource: imagePromotionSource,
+                artifactPromotionRequestViewLink:artifactPromotionRequestViewLink,
+                artifactPromotionApprovalLink:artifactPromotionApprovalLink,
+            }
 
         }
     }
@@ -273,8 +296,8 @@ export class MustacheHelper {
           scannedBy:event.payload.imageScanExecutionInfo?.scannedBy,
           buildHistoryLink: buildHistoryLink,
           appDetailsLink: appDetailsLink,
-          
-          
+
+
 
         };
     }
@@ -284,7 +307,7 @@ export class MustacheHelper {
                 high: imageScanExecutionInfo.severityCount.high,
                 moderate: imageScanExecutionInfo.severityCount.moderate,
                 low: imageScanExecutionInfo.severityCount.low,
-              }   
+              }
             } else{
                 return {};
             }
@@ -312,7 +335,7 @@ export class MustacheHelper {
                 return array.map(item => JSON.stringify(item));
             }
         });
-    
+
         array.forEach((item, index) => {
             Object.defineProperty(item, 'isLastIndex', {
                 get: function() {
@@ -323,18 +346,18 @@ export class MustacheHelper {
     }
     defineObjectProperties<T>(object: T): void {
         if (typeof object!=="object"){
-             
-            return 
+
+            return
         }
             Object.defineProperty(object, 'getAll', {
                 get: function() {
                     return JSON.stringify(object);
                 }
             });
-        
-       
+
+
     }
-    
+
 
     modifyWebhookData (webhookDataMap: any, gitUrl : string, isMergedTypeWebhook : boolean) : any {
 
@@ -374,4 +397,17 @@ export class MustacheHelper {
 export class WebhookData {
     mergedType : boolean;   // merged/non-merged
     data: Map<string, string>;
+}
+
+interface ParseArtifactPromotionEvent {
+    eventTime: number | string;
+    triggeredBy: string;
+    appName: string;
+    envName: string;
+    tags?:string[];
+    comment?:string;
+    artifactPromotionRequestViewLink?: string;
+    artifactPromotionApprovalLink?: string;
+    promotionArtifactSource?: string;
+    imageTag: string;
 }

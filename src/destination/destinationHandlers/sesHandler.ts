@@ -9,6 +9,7 @@ import {NotificationTemplates} from "../../entities/notificationTemplates";
 import {SESConfigRepository} from "../../repository/sesConfigRepository";
 import {UsersRepository} from "../../repository/usersRepository";
 import { MustacheHelper } from '../../common/mustacheHelper';
+import {EVENT_TYPE} from "../../common/types";
 
 //https://github.com/notifme/notifme-sdk/blob/master/src/models/notification-request.js#L132
 
@@ -161,14 +162,15 @@ export class SESService implements Handler {
             parsedEvent['fromEmail'] = event.payload['fromEmail'];
             parsedEvent['toEmail'] = event.payload['toEmail'];
             let json: string
-            if(event.eventTypeId===4){
+            if(event.eventTypeId===4 || event.eventTypeId === EVENT_TYPE.ImagePromotion){
                 let commentDisplayStyle = (event.payload.imageComment === "") ? 'none' : 'inline';
                 let tagDisplayStyle = (event.payload.imageTagNames === null) ? 'none' : 'inline';
                 json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle ,tagDisplayStyle});
             }else if(event.eventTypeId===5){
                 let commentDisplayStyle = (event.payload.protectConfigComment === "") ? 'none' : 'inline';
                 json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle });
-            }else{
+            }
+            else{
                 json = Mustache.render(template, parsedEvent)
             }
 
