@@ -96,6 +96,10 @@ export class SMTPService implements Handler {
           type: "smtp",
           port: smtpConfig["port"],
           host: smtpConfig["host"],
+          tls: {
+            // do not fail on invalid certs
+            rejectUnauthorized: false,
+          },
         };
 
         // Conditionally add the auth object
