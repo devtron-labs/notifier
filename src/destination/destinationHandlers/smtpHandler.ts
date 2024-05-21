@@ -104,7 +104,12 @@ export class SMTPService implements Handler {
             user: smtpConfig["auth_user"],
             pass: smtpConfig["auth_password"],
           };
-        }
+        }else {
+            emailProviderConfig.tls = {
+              // do not fail on invalid certs
+              rejectUnauthorized: false,
+            };
+          }
 
         // Create the NotifmeSdk instance
         let sdk: NotifmeSdk = new NotifmeSdk({
