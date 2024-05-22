@@ -86,7 +86,7 @@ export class SMTPService implements Handler {
             }
         } catch (error) {
             this.logger.error('getDefaultConfig', error)
-            throw new Error('Unable to get default SMTP config');
+            throw new CustomError("Unable to send SMTP notification",500);
         }
     }
 

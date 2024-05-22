@@ -185,7 +185,7 @@ export class SESService implements Handler {
             return res;
         } catch (error) {
             this.logger.error('ses sendNotification error', error)
-            throw new Error('Unable to send ses notification');
+            throw new CustomError("Unable to send ses notification",500);
         }
     }
 
