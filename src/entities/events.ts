@@ -21,3 +21,14 @@ export class CustomError extends Error {
         this.statusCode = statusCode;
     }
 }
+export class CustomResponse {
+    message: string;
+    status: number;
+    error?: CustomError; // Custom error field, marked as optional
+
+    constructor(message: string, status: number, error?: CustomError) {
+        this.message = message;
+        this.status = status;
+        this.error = error;
+    }
+}

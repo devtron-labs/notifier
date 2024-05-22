@@ -9,7 +9,7 @@ import { SESService } from "../../destination/destinationHandlers/sesHandler";
 import { SMTPService } from "../../destination/destinationHandlers/smtpHandler";
 import { EVENT_TYPE } from "../../common/types";
 
-import { CustomError } from "../../entities/events";
+import {CustomError, CustomResponse} from "../../entities/events";
 
 
 export interface Handler {
@@ -76,11 +76,11 @@ class NotificationService {
         }
     }
 
-    public async sendNotification(event: Event ):Promise<CustomError> {
+    public async sendNotification(event: Event ):Promise<CustomResponse> {
        try {
                if (event.payload.providers) {
                    this.sendApprovalNotificaton(event)
-                   throw  new CustomError("notification sent", 200)
+                   return new CustomResponse("notification sent",200)
                }
             if (!this.isValidEvent(event)) {
                 throw new CustomError("Event is not valid", 400)
@@ -91,7 +91,7 @@ class NotificationService {
                  this.logger.info('notificationSettingsRepository.findByEventSource')
                if (!settingsResults || settingsResults.length == 0) {
                     this.logger.info("no notification settings found for event " + event.correlationId);
-                   return  new CustomError("no notification settings found for event",404)
+                   return  new CustomResponse("",0,new CustomError("no notification settings found for event",404))
                 }
                 let destinationMap = new Map();
                 let configsMap = new Map();
@@ -120,7 +120,7 @@ class NotificationService {
 
                                     if (newTemplateResult.length === 0) {
                                         this.logger.info("no templates found for event ", event);
-                                        return  new CustomError("no templates found for event", 404);
+                                        return new CustomResponse("",0,new CustomError("no templates found for event", 404));
                                     }
 
                                     let ImageScanEvent = JSON.parse(JSON.stringify(event));
@@ -142,7 +142,7 @@ class NotificationService {
                            let templateResults=  await this.templatesRepository.findByEventTypeIdAndNodeType(event.eventTypeId, event.pipelineType)
                             if (!templateResults) {
                                 this.logger.info("no templates found for event ", event);
-                                return new CustomError("no templates found for event", 404);
+                                return new CustomResponse("",0,new CustomError("no templates found for event", 404));
                             }
                             for (let h of this.handlers) {
                                 h.handle(event,  templateResults, setting, configsMap, destinationMap)
@@ -151,9 +151,9 @@ class NotificationService {
                     }
                 }
            this.logger.info("notification sent");
-           return await new CustomError("notification sent",200)
+           return  new CustomResponse("notification sent",200)
         }catch (error:any) {
-           return await error instanceof CustomError?error:new CustomError(error.message,400)
+           return await error instanceof CustomError?new CustomResponse("",0,error):new CustomResponse("",0,new CustomError(error.message,400))
         }
     }
 
