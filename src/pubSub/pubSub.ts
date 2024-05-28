@@ -160,7 +160,11 @@ export class PubSubServiceImpl implements PubSubService {
             const Info: StreamInfo | null = await this.jsm.streams.info(streamName)
             if (Info) {
                 if (await this.checkConfigChangeReqd(Info.config, streamConfig)) {
-                    await this.jsm.streams.update(streamName, Info.config)
+                    await this.jsm.streams.update(streamName, Info.config).catch(
+                        (err) => {
+                            this.logger.error("error occurred during updating streams", err)
+                        }
+                    )
                     this.logger.info("streams updated successfully")
                 }
             }
