@@ -31,10 +31,11 @@ import {connect, NatsConnection} from "nats";
 import {NOTIFICATION_EVENT_TOPIC} from "./pubSub/utils";
 import {PubSubServiceImpl} from "./pubSub/pubSub";
 import {send} from "./tests/sendSlackNotification";
+import bodyParser from "body-parser";
 
 const app = express();
 const natsUrl = process.env.NATS_URL
-
+app.use(bodyParser.json({ limit: '10mb' }));
 app.use(express.json());
 
 
@@ -101,7 +102,7 @@ createConnection(dbOptions).then(async connection => {
             await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
         })().catch(
             (err) => {
-                console.log("error occurred due to", err)
+                logger.error("error occurred due to", err)
             }
         )
     }
