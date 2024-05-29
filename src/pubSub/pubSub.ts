@@ -200,7 +200,6 @@ function getJsonString(bytes: Uint8Array) {
 function getStreamConfig(streamConfig: NatsStreamConfig, streamName: string) {
 
     return {
-        num_replicas: streamConfig.num_replicas,
         max_age: streamConfig.max_age,
         subjects: GetStreamSubjects(streamName),
     } as StreamConfig
