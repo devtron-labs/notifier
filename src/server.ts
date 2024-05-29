@@ -117,7 +117,6 @@ const natsEventHandler = (msg: string) => {
     const eventAsString = JSON.parse(msg)
     const event = JSON.parse(eventAsString) as Event
     notificationService.sendNotification(event)
-    logger.info("-------------------SENT NOTIFICATION THROUGH NATS----------------------------")
 }
 
 
