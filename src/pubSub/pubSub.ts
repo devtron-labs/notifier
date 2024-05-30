@@ -1,4 +1,4 @@
-import {createInbox, JetStreamClient, NatsConnection, NatsError, StreamInfo, StringCodec} from "nats";
+import {ConsumerConfig, createInbox, JetStreamClient, NatsConnection, NatsError, StreamInfo, StringCodec} from "nats";
 import {
     GetStreamSubjects,
     NatsConsumerConfig,
@@ -12,6 +12,7 @@ import {
 import {ConsumerOptsBuilderImpl} from "nats/lib/nats-base-client/jsconsumeropts";
 
 import {ConsumerInfo, ConsumerUpdateConfig, JetStreamManager, StreamConfig} from "nats/lib/nats-base-client/types";
+import {error} from "winston";
 
 
 export interface PubSubService {
@@ -41,12 +42,17 @@ export class PubSubServiceImpl implements PubSubService {
         const consumerName = natsTopicConfig.consumerName
         const queueName = natsTopicConfig.queueName
         const inbox = createInbox()
+        //******* Getting consumer configuration
+
+        const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
+        const consumerConfigParsed = getConsumerConfig(consumerConfiguration)
+        console.log("consumerConfigParsed",consumerConfigParsed)
         const consumerOptsDetails = new ConsumerOptsBuilderImpl({
             name: consumerName,
             deliver_subject: inbox,
             durable_name: consumerName,
             ack_wait: 120 * 1e9,
-            num_replicas: 0,
+            num_replicas: consumerConfigParsed.num_replicas,
             filter_subject: topic,
 
 
@@ -64,39 +70,13 @@ export class PubSubServiceImpl implements PubSubService {
 
         const streamConfiguration = NatsStreamWiseConfigMapping.get(streamName)
         const streamConfigParsed = getStreamConfig(streamConfiguration, streamName)
-        await this.addOrUpdateStream(streamName, streamConfigParsed)
+        console.log("streamconfig parsed",streamConfigParsed)
 
-        //******* Getting consumer configuration
-
-        const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
-
-        // *** newConsumerFound check the consumer is new or not
-
-        const newConsumerFound = await this.updateConsumer(streamName, consumerName, consumerConfiguration)
-
-        // ********** Creating a consumer
-
-        if (newConsumerFound) {
-            try {
-                await this.jsm.consumers.add(streamName, {
-                    name: consumerName,
-                    deliver_subject: inbox,
-                    durable_name: consumerName,
-                    ack_wait: 120 * 1e9,
-                    num_replicas: 0,
-                    filter_subject: topic,
-
-                })
-                this.logger.info("consumer added successfully")
-            } catch (err) {
-                this.logger.error("error occurred while adding consumer", err)
-            }
-
-
-        }
-
-        // *********  Nats Subscribe() function
         try {
+            await this.addOrUpdateStream(streamName, streamConfigParsed)
+            this.logger.info("stream updated or added successfully")
+            await this.addOrUpdateConsumer(streamName, consumerName, consumerConfiguration,inbox,topic)
+            this.logger.info("consumer updated or added successfully")
             await this.js.subscribe(topic, consumerOptsDetails)
             this.logger.info("subscribed to nats successfully")
 
@@ -104,18 +84,53 @@ export class PubSubServiceImpl implements PubSubService {
             this.logger.error("error occurred while subscribing", err)
         }
 
+        // *** newConsumerFound check the consumer is new or not
+
+        //const newConsumerFound = await this.addOrUpdateConsumer(streamName, consumerName, consumerConfiguration)
+
+
+        // ********** Creating a consumer
+
+        // if (newConsumerFound) {
+        //     try {
+        //         await this.jsm.consumers.add(streamName, {
+        //             name: consumerName,
+        //             deliver_subject: inbox,
+        //             durable_name: consumerName,
+        //             ack_wait: 120 * 1e9,
+        //             num_replicas: 0,
+        //             filter_subject: topic,
+        //
+        //         })
+        //         this.logger.info("consumer added successfully")
+        //     } catch (err) {
+        //         this.logger.error("error occurred while adding consumer", err)
+        //     }
+        //
+        //
+        // }
+
+        // *********  Nats Subscribe() function
+
+
 
     }
 
 
-    async updateConsumer(streamName: string, consumerName: string, consumerConfiguration: NatsConsumerConfig): Promise<boolean> {
+    async addOrUpdateConsumer(streamName: string, consumerName: string, consumerConfiguration: NatsConsumerConfig,inbox: string, topic: string){
         let updatesDetected: boolean = false
         try {
             const info: ConsumerInfo | null = await this.jsm.consumers.info(streamName, consumerName)
+            console.log("consumer info",info)
             if (info) {
                 if (consumerConfiguration.ack_wait > 0 && info.config.ack_wait != consumerConfiguration.ack_wait) {
                     info.config.ack_wait = consumerConfiguration.ack_wait
                     updatesDetected = true
+                }
+                if (consumerConfiguration.num_replicas > 0 && info.config.num_replicas!= consumerConfiguration.num_replicas){
+                    info.config.num_replicas=consumerConfiguration.num_replicas
+                    console.log("num replicas mis match")
+                    updatesDetected=true
                 }
                 if (updatesDetected === true) {
 
@@ -126,14 +141,29 @@ export class PubSubServiceImpl implements PubSubService {
             }
         } catch (err) {
             if (err instanceof NatsError) {
-                this.logger.error("error occurred due to reason:", err)
+                this.logger.error("error occurred in adding or updating consumer due to reason:", err)
 
                 if (err.api_error.err_code === 10014) { // 10014 error code depicts that consumer is not found
-                    return true
+                    //return true
+                    const consumerConfig=getConsumerConfig(consumerConfiguration)
+                       consumerConfig.durable_name=consumerName
+                    consumerConfig.filter_subject=topic
+                    consumerConfig.name=consumerName
+                        try {
+                            await this.jsm.consumers.add(streamName, consumerConfig)
+                            this.logger.info("consumer added successfully")
+                        } catch (err) {
+                            this.logger.error("error occurred while adding consumer", err)
+                        }
+
+                }else {
+                    throw err
                 }
+
+            }else{
+                throw err
             }
         }
-        return false
 
     }
 
@@ -141,7 +171,10 @@ export class PubSubServiceImpl implements PubSubService {
         try {
             const Info: StreamInfo | null = await this.jsm.streams.info(streamName)
             if (Info) {
-                if (await this.checkConfigChangeReqd(Info.config, streamConfig)) {
+                if (await this.checkConfigChangeReqd(Info.config, streamConfig).catch((err)=>{
+                    this.logger.error("error occurred during checking config of stream", err)
+                    throw err
+                })) {
                     await this.jsm.streams.update(streamName, Info.config).catch(
                         (err) => {
                             this.logger.error("error occurred during updating streams", err)
@@ -165,10 +198,14 @@ export class PubSubServiceImpl implements PubSubService {
 
 
                 } else {
-                    this.logger.error("error occurred due to :", err)
+
+                    throw err
                 }
 
+            }else{
+                throw err
             }
+
 
         }
 
@@ -179,6 +216,23 @@ export class PubSubServiceImpl implements PubSubService {
         if (toUpdateConfig.max_age != 0 && (toUpdateConfig.max_age != existingStreamInfo.max_age)) {
             existingStreamInfo.max_age = toUpdateConfig.max_age
             configChanged = true
+        }
+        if (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas > 0) {
+            if (toUpdateConfig.num_replicas > 0 && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas != existingStreamInfo.num_replicas) {
+                if (toUpdateConfig.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
+                    existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
+                    configChanged = true
+                } else if (toUpdateConfig.num_replicas > 1) {
+                    //console.log("replicas >1 is not possible in non-clustered mode")
+                   this.logger.error("replicas >1 is not possible in non-clustered mode")
+                    throw Error("replicas >1 is not possible in non-clustered mode")
+                } else {
+                    existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
+                    configChanged = true
+
+                }
+
+            }
         }
             if (!existingStreamInfo.subjects.includes(toUpdateConfig.subjects[0])) { // filter subject if not present already
                 // If the value is not in the array, append it
@@ -201,7 +255,14 @@ function getStreamConfig(streamConfig: NatsStreamConfig, streamName: string) {
 
     return {
         max_age: streamConfig.max_age,
+        num_replicas: streamConfig.num_replicas,
         subjects: GetStreamSubjects(streamName),
     } as StreamConfig
+}
+function getConsumerConfig(consumerConfig: NatsConsumerConfig): ConsumerConfig{
+    return {
+        ack_wait:  consumerConfig.ack_wait,
+        num_replicas: consumerConfig.num_replicas,
+    }as ConsumerConfig
 }
 
