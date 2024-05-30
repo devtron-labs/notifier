@@ -12,7 +12,7 @@
 //     getNotificationPayload(event: Event) {
 //         if (this.slackTemplateMap.has(event.type)) {
 //             let template = this.slackTemplateMap.get(event.type)
-            
+
 //         } else {
 //             //err not supported
 //         }
