@@ -72,16 +72,12 @@ handlers.push(smtpService)
 let notificationService = new NotificationService(new EventRepository(), new NotificationSettingsRepository(), new NotificationTemplatesRepository(), handlers, logger)
 
 
-// let dbHost: string = process.env.DB_HOST;
-// const dbPort: number = +process.env.DB_PORT;
-// const user: string = process.env.DB_USER;
-// const pwd: string = process.env.DB_PWD;
-// const db: string = process.env.DB;
-let dbHost: string ="localhost";
-const dbPort: number =5434;
-const user: string = "postgres";
-const pwd: string = "shared-devtron-pg";
-const db: string = "orchestrator_14";
+let dbHost: string = process.env.DB_HOST;
+const dbPort: number = +process.env.DB_PORT;
+const user: string = process.env.DB_USER;
+const pwd: string = process.env.DB_PWD;
+const db: string = process.env.DB;
+
 
 
 
@@ -96,11 +92,11 @@ let dbOptions: ConnectionOptions = {
 }
 createConnection(dbOptions).then(async connection => {
     logger.info("Connected to DB")
-    if("localhost:4222"){
+    if(natsUrl){
         let conn: NatsConnection
         (async () => {
             logger.info("Connecting to NATS server...");
-            conn = await connect({servers: "localhost:4222"})
+            conn = await connect({servers:natsUrl})
             const jsm = await conn.jetstreamManager()
             const obj = new PubSubServiceImpl(conn, jsm,logger)
             await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)

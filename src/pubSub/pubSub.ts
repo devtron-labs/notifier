@@ -217,9 +217,11 @@ export class PubSubServiceImpl implements PubSubService {
             existingStreamInfo.max_age = toUpdateConfig.max_age
             configChanged = true
         }
+        console.log("nc info",this.nc.info)
         if (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas > 0) {
             if (toUpdateConfig.num_replicas > 0 && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas != existingStreamInfo.num_replicas) {
                 if (toUpdateConfig.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
+
                     existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
                     configChanged = true
                 } else if (toUpdateConfig.num_replicas > 1) {
