@@ -29,6 +29,9 @@ import { WebhookService } from './destination/destinationHandlers/webhookHandler
 import { WebhookConfig } from './entities/webhookconfig';
 import * as process from "process";
 import bodyParser from 'body-parser';
+import {connect, NatsConnection} from "nats";
+import {PubSubServiceImpl} from "./pubSub/pubsub";
+import {NOTIFICATION_EVENT_TOPIC} from "./pubSub/utils";
 const app = express();
 app.use(bodyParser.json({ limit: '10mb' }));
 
@@ -64,9 +67,7 @@ handlers.push(smtpService)
 
 let notificationService = new NotificationService(new EventRepository(), new NotificationSettingsRepository(), new NotificationTemplatesRepository(), handlers, logger)
 
-
-
-
+const natsUrl = process.env.NATS_URL
 
 let dbHost: string = process.env.DB_HOST;
 const dbPort: number = +process.env.DB_PORT;
@@ -86,12 +87,30 @@ let dbOptions: ConnectionOptions = {
 
 createConnection(dbOptions).then(async connection => {
     logger.info("Connected to DB")
+    if(natsUrl){
+        let conn: NatsConnection
+        (async () => {
+            logger.info("Connecting to NATS server...");
+            conn = await connect({servers:natsUrl})
+            const jsm = await conn.jetstreamManager()
+            const obj = new PubSubServiceImpl(conn, jsm,logger)
+            await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
+        })().catch(
+            (err) => {
+                logger.error("error occurred due to", err)
+            }
+        )
+    }
 }).catch(error => {
     logger.error("TypeORM connection error: ", error);
     logger.error("shutting down notifier due to un-successful database connection...")
     process.exit(1)
 });
-
+const natsEventHandler = (msg: string) => {
+    const eventAsString = JSON.parse(msg)
+    const event = JSON.parse(eventAsString) as Event
+    notificationService.sendNotification(event)
+}
 app.get('/', (req, res) => res.send('Welcome to notifier Notifier!'))
 
 app.get('/health', (req, res) =>{

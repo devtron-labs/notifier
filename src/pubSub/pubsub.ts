@@ -78,7 +78,7 @@ export class PubSubServiceImpl implements PubSubService {
             ack_wait: consumerConfigParsed.ack_wait,
             num_replicas: consumerConfigParsed.num_replicas,
             filter_subject: consumerConfigParsed.filter_subject,
-            deliver_group: queueName  // in case of durable consumer deliver group isnt required
+            deliver_group: queueName
 
         }).bindStream(streamName).callback((err, msg) => {
 
