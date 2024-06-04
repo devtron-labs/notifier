@@ -9,9 +9,10 @@ export const ORCHESTRATOR_STREAM: string = "ORCHESTRATOR"
 // const maxAge: number = parseInt(process.env.MAX_AGE)
 // const streamReplica: number = parseInt(process.env.STREAM_REPLICA)
 const ackWait: number = parseInt(process.env.ACK_WAIT)
-const consumerReplica: number = 3
+// const consumerReplica: number = 3
 const maxAge: number = parseInt(process.env.MAX_AGE)
-const streamReplica: number = 0
+const streamReplica: number = 3
+export const numberOfRetries: number = parseInt(process.env.NUMBER_OF_RETRIES) || 5
 
 export interface NatsTopic {
     topicName: string
@@ -44,7 +45,7 @@ export const NatsConsumerWiseConfigMapping = new Map<string, NatsConsumerConfig>
     [[NOTIFICATION_EVENT_DURABLE, {
 
         ack_wait: !isNaN(ackWait) ? ackWait * 1e9 : 120 * 1e9,
-        num_replicas: !isNaN(consumerReplica) ? consumerReplica : 0,
+        num_replicas:  !isNaN(streamReplica) ? streamReplica : 0,
 
     }]
     ]);

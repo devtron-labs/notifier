@@ -1,4 +1,15 @@
-import {ConsumerConfig, createInbox, JetStreamClient, NatsConnection, NatsError, StreamInfo, StringCodec} from "nats";
+import {
+    AckPolicy,
+    ConsumerConfig,
+    createInbox,
+    DeliverPolicy,
+    JetStreamClient,
+    NatsConnection,
+    NatsError,
+    RetentionPolicy,
+    StreamInfo,
+    StringCodec
+} from "nats";
 import {
     GetStreamSubjects,
     NatsConsumerConfig,
@@ -7,12 +18,12 @@ import {
     NatsStreamWiseConfigMapping,
     NatsTopic,
     NatsTopicMapping,
+    numberOfRetries,
 } from "./utils";
 
 import {ConsumerOptsBuilderImpl} from "nats/lib/nats-base-client/jsconsumeropts";
 
-import {ConsumerInfo, ConsumerUpdateConfig, JetStreamManager, StreamConfig} from "nats/lib/nats-base-client/types";
-import {error} from "winston";
+import {ConsumerInfo, JetStreamManager, StreamConfig} from "nats/lib/nats-base-client/types";
 
 
 export interface PubSubService {
@@ -47,10 +58,19 @@ export class PubSubServiceImpl implements PubSubService {
         const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
         const consumerConfigParsed = getConsumerConfig(consumerConfiguration)
         console.log("consumerConfigParsed",consumerConfigParsed)
+        const streamConfiguration = NatsStreamWiseConfigMapping.get(streamName)
+        const streamConfigParsed = getStreamConfig(streamConfiguration, streamName)
+        console.log("streamconfig parsed",streamConfigParsed)
         consumerConfigParsed.name=consumerName
         consumerConfigParsed.deliver_subject=inbox
         consumerConfigParsed.filter_subject=topic
         consumerConfigParsed.durable_name=consumerName
+        consumerConfigParsed.deliver_group=queueName
+        consumerConfigParsed.ack_policy=AckPolicy.Explicit // default ack policy to be set
+        consumerConfigParsed.deliver_policy=DeliverPolicy.Last
+        if (streamConfigParsed.retention== RetentionPolicy.Workqueue){
+            consumerConfigParsed.deliver_policy=DeliverPolicy.All
+        }
         const consumerOptsDetails = new ConsumerOptsBuilderImpl({
             name: consumerConfigParsed.name,
             deliver_subject: consumerConfigParsed.deliver_subject,
@@ -58,8 +78,7 @@ export class PubSubServiceImpl implements PubSubService {
             ack_wait: consumerConfigParsed.ack_wait,
             num_replicas: consumerConfigParsed.num_replicas,
             filter_subject: consumerConfigParsed.filter_subject,
-            deliver_group: queueName
-
+            deliver_group: queueName  // in case of durable consumer deliver group isnt required
 
         }).bindStream(streamName).callback((err, msg) => {
 
@@ -73,21 +92,36 @@ export class PubSubServiceImpl implements PubSubService {
         })
         // *******Creating/Updating stream
 
-        const streamConfiguration = NatsStreamWiseConfigMapping.get(streamName)
-        const streamConfigParsed = getStreamConfig(streamConfiguration, streamName)
-        console.log("streamconfig parsed",streamConfigParsed)
 
-        try {
-            await this.addOrUpdateStream(streamName, streamConfigParsed)
-            this.logger.info("stream updated or added successfully")
-            await this.addOrUpdateConsumer(streamName, consumerName, consumerConfiguration, consumerConfigParsed)
-            this.logger.info("consumer updated or added successfully")
-            console.log("consumerOptsDetails", consumerOptsDetails)
-            await this.js.subscribe(topic, consumerOptsDetails)
-            this.logger.info("subscribed to nats successfully")
-        }catch(err){
-            this.logger.error("unsuccessful in subscribing to nats",err)
+
+        const maxAttempts = numberOfRetries;
+        let attempts = 0;
+
+        while (attempts < maxAttempts) {
+            try {
+                await this.addOrUpdateStream(streamName, streamConfigParsed);
+                this.logger.info("Stream updated or added successfully");
+
+                await this.addOrUpdateConsumer(streamName, consumerName, consumerConfiguration, consumerConfigParsed);
+                this.logger.info("Consumer updated or added successfully");
+
+                console.log("ConsumerOptsDetails", consumerOptsDetails);
+                await this.js.subscribe(topic, consumerOptsDetails);
+                this.logger.info("Subscribed to NATS successfully");
+
+                break;
+            } catch (err) {
+                this.logger.error("Unsuccessful in subscribing to NATS", err);
+                attempts++;
+                if (attempts === maxAttempts) {
+                    this.logger.error("Maximum restart attempts reached. Exiting loop.");
+                } else {
+                    const delayInMilliseconds = 5000; // 5 seconds
+                    await new Promise(resolve => setTimeout(resolve, delayInMilliseconds));
+                }
+            }
         }
+
 
         // *** newConsumerFound check the consumer is new or not
 
@@ -134,7 +168,6 @@ export class PubSubServiceImpl implements PubSubService {
                 }
                 if (consumerConfiguration.num_replicas > 0 && info.config.num_replicas!= consumerConfiguration.num_replicas){
                     info.config.num_replicas=consumerConfiguration.num_replicas
-                    console.log("num replicas mis match")
                     updatesDetected=true
                 }
                 if (updatesDetected === true) {
@@ -229,7 +262,6 @@ export class PubSubServiceImpl implements PubSubService {
         }
         console.log("nc info",this.nc.info)
         if (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas > 0) {
-            if (toUpdateConfig.num_replicas > 0 && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas != existingStreamInfo.num_replicas) {
                 if (toUpdateConfig.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
 
                     existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
@@ -243,8 +275,10 @@ export class PubSubServiceImpl implements PubSubService {
                     configChanged = true
 
                 }
-
-            }
+        }
+        if (toUpdateConfig.retention!=existingStreamInfo.retention){
+            existingStreamInfo.retention=toUpdateConfig.retention
+            configChanged=true
         }
         if (!existingStreamInfo.subjects.includes(toUpdateConfig.subjects[0])) { // filter subject if not present already
             // If the value is not in the array, append it
