@@ -9,7 +9,7 @@ const consumerReplica: number = parseInt(process.env.CONSUMER_REPLICAS)
 const streamReplica: number = parseInt(process.env.STREAM_REPLICA)
 const maxAge: number = parseInt(process.env.MAX_AGE)
 const numberOfRetriesFetched: number = parseInt(process.env.NO_OF_RETRIES)||5
-// Ensure the value is not greater than 10
+// Ensure the value is not greater than 5
 export const numberOfRetries = Math.min(numberOfRetriesFetched, 5);
 
 export interface NatsTopic {
