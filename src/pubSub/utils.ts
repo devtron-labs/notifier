@@ -8,7 +8,9 @@ const ackWait: number = parseInt(process.env.ACK_WAIT)
 const consumerReplica: number = parseInt(process.env.CONSUMER_REPLICAS)
 const streamReplica: number = parseInt(process.env.STREAM_REPLICA)
 const maxAge: number = parseInt(process.env.MAX_AGE)
-export const numberOfRetries: number = parseInt(process.env.NO_OF_RETRIES)||5
+const numberOfRetriesFetched: number = parseInt(process.env.NO_OF_RETRIES)||5
+// Ensure the value is not greater than 10
+export const numberOfRetries = Math.min(numberOfRetriesFetched, 5);
 
 export interface NatsTopic {
     topicName: string
@@ -49,7 +51,7 @@ export const NatsConsumerWiseConfigMapping = new Map<string, NatsConsumerConfig>
 export const NatsStreamWiseConfigMapping = new Map<string, NatsStreamConfig>(
     [[ORCHESTRATOR_STREAM, {
 
-        max_age: !isNaN(maxAge) ? maxAge * 1e9 : 30 * 1e9,
+        max_age: !isNaN(maxAge) ? maxAge * 1e9 : 120 * 1e9,
         num_replicas: !isNaN(streamReplica) ? streamReplica : 0,
 
     }]
