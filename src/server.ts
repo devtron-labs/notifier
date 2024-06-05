@@ -75,6 +75,7 @@ const user: string = process.env.DB_USER;
 const pwd: string = process.env.DB_PWD;
 const db: string = process.env.DB;
 
+
 let dbOptions: ConnectionOptions = {
     type: "postgres",
     host: dbHost,

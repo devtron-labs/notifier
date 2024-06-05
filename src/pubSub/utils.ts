@@ -4,15 +4,11 @@ export const NOTIFICATION_EVENT_TOPIC: string = "NOTIFICATION_EVENT_TOPIC"
 export const NOTIFICATION_EVENT_GROUP: string = "NOTIFICATION_EVENT_GROUP"
 export const NOTIFICATION_EVENT_DURABLE: string = "NOTIFICATION_EVENT_DURABLE"
 export const ORCHESTRATOR_STREAM: string = "ORCHESTRATOR"
-// const ackWait: number = parseInt(process.env.ACK_WAIT)
-// const consumerReplica: number = parseInt(process.env.CONSUMER_REPLICAS)
-// const maxAge: number = parseInt(process.env.MAX_AGE)
-// const streamReplica: number = parseInt(process.env.STREAM_REPLICA)
 const ackWait: number = parseInt(process.env.ACK_WAIT)
-// const consumerReplica: number = 3
+const consumerReplica: number = parseInt(process.env.CONSUMER_REPLICAS)
+const streamReplica: number = parseInt(process.env.STREAM_REPLICA)
 const maxAge: number = parseInt(process.env.MAX_AGE)
-const streamReplica: number = 3
-export const numberOfRetries: number = parseInt(process.env.NUMBER_OF_RETRIES) || 5
+export const numberOfRetries: number = parseInt(process.env.NO_OF_RETRIES)||5
 
 export interface NatsTopic {
     topicName: string
@@ -44,8 +40,8 @@ export let NatsTopicMapping = new Map<string, NatsTopic>([
 export const NatsConsumerWiseConfigMapping = new Map<string, NatsConsumerConfig>(
     [[NOTIFICATION_EVENT_DURABLE, {
 
-        ack_wait: !isNaN(ackWait) ? ackWait * 1e9 : 120 * 1e9,
-        num_replicas:  !isNaN(streamReplica) ? streamReplica : 0,
+        ack_wait: !isNaN(ackWait) ? ackWait * 1e9 : 30 * 1e9,
+        num_replicas:  !isNaN(consumerReplica) ? ((consumerReplica==0)? streamReplica:consumerReplica) : streamReplica,
 
     }]
     ]);
@@ -53,7 +49,7 @@ export const NatsConsumerWiseConfigMapping = new Map<string, NatsConsumerConfig>
 export const NatsStreamWiseConfigMapping = new Map<string, NatsStreamConfig>(
     [[ORCHESTRATOR_STREAM, {
 
-        max_age: !isNaN(maxAge) ? maxAge * 1e9 : 86400 * 1e9,
+        max_age: !isNaN(maxAge) ? maxAge * 1e9 : 30 * 1e9,
         num_replicas: !isNaN(streamReplica) ? streamReplica : 0,
 
     }]
