@@ -214,7 +214,7 @@ export class PubSubServiceImpl implements PubSubService {
                 existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
                 configChanged = true
             } else if (toUpdateConfig.num_replicas > 1) {
-                this.logger.error("replicas >1 is not possible in non-clustered mode")
+                this.logger.warn("replicas >1 is not possible in non-clustered mode")
             } else {
                 existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
                 configChanged = true
