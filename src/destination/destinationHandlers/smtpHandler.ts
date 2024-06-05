@@ -90,20 +90,34 @@ export class SMTPService implements Handler {
     }
 
     private preparePaylodAndSend(event: Event, smtpTemplate: NotificationTemplates, setting: NotificationSettings, p: string){
+        const smtpConfig = this.smtpConfig;
+        // Create the email provider configuration
+        let emailProviderConfig: any = {
+          type: "smtp",
+          port: smtpConfig["port"],
+          host: smtpConfig["host"],
+        };
+
+        // Conditionally add the auth object
+        if ((smtpConfig["auth_user"]) && (smtpConfig["auth_password"])){
+          emailProviderConfig.auth = {
+            user: smtpConfig["auth_user"],
+            pass: smtpConfig["auth_password"],
+          };
+        }else {
+            emailProviderConfig.tls = {
+              // do not fail on invalid certs
+              rejectUnauthorized: false,
+            };
+          }
+
+        // Create the NotifmeSdk instance
         let sdk: NotifmeSdk = new NotifmeSdk({
-            channels: {
-                email: {
-                    providers: [{
-                        type: 'smtp',
-                        port: this.smtpConfig['port'],
-                        host: this.smtpConfig['host'],
-                        auth:{
-                            user: this.smtpConfig['auth_user'],
-                            pass: this.smtpConfig['auth_password'],
-                        }
-                    }]
-                }
-            }
+          channels: {
+            email: {
+              providers: [emailProviderConfig],
+            },
+          },
         });
         event.payload['fromEmail'] = this.smtpConfig['from_email']
         let engine = new Engine();

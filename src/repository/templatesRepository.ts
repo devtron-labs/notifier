@@ -20,6 +20,15 @@ export class NotificationTemplatesRepository {
           }
       });
   }
+
+  findByEventTypeIdAndChannelType(eventTypeId: number, channelType: string) {
+        return getManager().getRepository(NotificationTemplates).find({
+            where: {
+                event_type_id: eventTypeId,
+                channel_type: channelType,
+            }
+        });
+    }
 }
 export class WebhookConfigRepository {
     async getAllWebhookConfigs() {

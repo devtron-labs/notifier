@@ -1,8 +1,9 @@
 import { Event } from '../notification/service/notificationService';
 import moment from 'moment-timezone';
 import e, { json } from 'express';
-import { EVENT_TYPE } from "./types";
+import {EVENT_TYPE, ParsedScoopNotification} from "./types";
 import { ciMaterials ,ParsedCIEvent,vulnerability,severityCount,WebhookParsedEvent,ParseApprovalEvent,ParseConfigApprovalEvent,ParsedCDEvent} from './types';
+import Mustache from "mustache";
 export class MustacheHelper {
     private CD_STAGE = {
         DEPLOY: "Deployment",
@@ -35,7 +36,30 @@ export class MustacheHelper {
         return "NA"
     }
 
-    parseEvent(event: Event, isSlackNotification?: boolean): ParsedCIEvent | ParsedCDEvent | ParseApprovalEvent | ParseConfigApprovalEvent | ParseArtifactPromotionEvent{
+    parseScoopNotification(event: Event | any): ParsedScoopNotification {
+        const date = moment(event.payload.scoopNotificationConfig.data.interceptedAt);
+        const timestamp = date.format('dddd, MMMM Do YYYY hh:mm A [GMT]Z');
+        const parsedScoopNotification: ParsedScoopNotification = {
+            heading: 'Change: Resource '+ event.payload.scoopNotificationConfig.data.action,
+            kind: event.payload.scoopNotificationConfig.data.kind,
+            resourceName: event.payload.scoopNotificationConfig.data.name,
+            action: event.payload.scoopNotificationConfig.data.action,
+            clusterName: event.payload.scoopNotificationConfig.data.clusterName,
+            namespace: event.payload.scoopNotificationConfig.data.namespace,
+            watcherName: event.payload.scoopNotificationConfig.data.watcherName,
+            pipelineName: event.payload.scoopNotificationConfig.data.pipelineName,
+            viewResourceManifestLink: event.payload.scoopNotificationConfig.data.viewResourceManifestLink,
+            interceptedAt: timestamp,
+            color: event.payload.scoopNotificationConfig.data.color
+        }
+
+        return parsedScoopNotification
+    }
+
+    parseEvent(event: Event, isSlackNotification?: boolean): ParsedCIEvent | ParsedCDEvent | ParseApprovalEvent | ParseConfigApprovalEvent | ParseArtifactPromotionEvent | ParsedScoopNotification{
+        if(event.eventTypeId===EVENT_TYPE.ScoopNotification){
+            return this.parseScoopNotification(event)
+        }
         let baseURL = event.baseUrl;
         let material = event.payload.material;
         let ciMaterials;
