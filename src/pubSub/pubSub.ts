@@ -110,8 +110,8 @@ export class PubSubServiceImpl implements PubSubService {
                 }
 
                 // ****** NATS Subscribe function
-                    await this.js.subscribe(topic, consumerOptsDetails)
-                    this.logger.info("subscribed to nats successfully")
+                await this.js.subscribe(topic, consumerOptsDetails)
+                this.logger.info("subscribed to nats successfully")
 
                 break;
             } catch (err) {
