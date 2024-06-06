@@ -86,7 +86,7 @@ export class PubSubServiceImpl implements PubSubService {
                 if (newConsumerFound) {
                     try {
                         if (consumerConfiguration.num_replicas>1 && this.nc.info.cluster==undefined){
-                                this.logger.warn("replicas>1 not possible in non clustered mode")
+                                this.logger.warn("replicas > 1 is not possible in non clustered mode")
                                 consumerConfiguration.num_replicas=0
                         }
                         await this.jsm.consumers.add(streamName, {
@@ -112,7 +112,7 @@ export class PubSubServiceImpl implements PubSubService {
 
                 break;
             } catch (err) {
-                this.logger.error("Unsuccessful in subscribing to NATS", err);
+                this.logger.error("unsuccessful in subscribing to NATS", err);
                 attempts++;
                 if (attempts === maxAttempts) {
                     this.logger.error("Maximum restart attempts reached. Exiting loop.");
@@ -139,7 +139,7 @@ export class PubSubServiceImpl implements PubSubService {
                         info.config.num_replicas=consumerConfiguration.num_replicas
                         updatesDetected=true
                     }else if(consumerConfiguration.num_replicas>1){
-                        this.logger.warn("replicas>1 not possible in non clustered mode")
+                        this.logger.warn("replicas > 1 is not possible in non clustered mode")
                         consumerConfiguration.num_replicas=0
                     }else{
                         info.config.num_replicas=consumerConfiguration.num_replicas
@@ -155,7 +155,7 @@ export class PubSubServiceImpl implements PubSubService {
             }
         } catch (err) {
             if (err instanceof NatsError) {
-                this.logger.error("error occurred due to reason:", err)
+                this.logger.error("error occurred due to :", err)
 
                 if (err.api_error.err_code === 10014) { // 10014 error code depicts that consumer is not found
                     return true
@@ -184,12 +184,12 @@ export class PubSubServiceImpl implements PubSubService {
                 if (err.api_error.err_code === 10059) {
                     streamConfig.name = streamName
                         if (streamConfig.num_replicas>1 && this.nc.info.cluster==undefined){
-                            this.logger.warn("replicas>1 not possible in non clustered mode")
+                            this.logger.warn("replicas > 1 is not possible in non clustered mode")
                             streamConfig.num_replicas=0
                         }
                     try {
                         await this.jsm.streams.add(streamConfig)
-                        this.logger.info(" stream added successfully")
+                        this.logger.info("stream added successfully")
                     } catch (err) {
                         this.logger.error("error occurred during adding streams", err)
                     }
@@ -214,7 +214,7 @@ export class PubSubServiceImpl implements PubSubService {
                 existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
                 configChanged = true
             } else if (toUpdateConfig.num_replicas > 1) {
-                this.logger.warn("replicas >1 is not possible in non-clustered mode")
+                this.logger.warn("replicas > 1 is not possible in non-clustered mode")
             } else {
                 existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
                 configChanged = true
