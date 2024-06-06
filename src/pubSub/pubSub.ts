@@ -86,11 +86,9 @@ export class PubSubServiceImpl implements PubSubService {
 
                 if (newConsumerFound) {
                     try {
-                        if (consumerConfiguration.num_replicas > 0 ){
-                            if (consumerConfiguration.num_replicas>1 && this.nc.info.cluster==undefined){
+                        if (consumerConfiguration.num_replicas>1 && this.nc.info.cluster==undefined){
                                 this.logger.warn("replicas>1 not possible in non clustered mode")
                                 consumerConfiguration.num_replicas=0
-                            }
                         }
                         await this.jsm.consumers.add(streamName, {
                             name: consumerName,
@@ -138,7 +136,13 @@ export class PubSubServiceImpl implements PubSubService {
                     updatesDetected = true
                 }
                 if (consumerConfiguration.num_replicas > 0 && info.config.num_replicas!= consumerConfiguration.num_replicas){
-                    if (consumerConfiguration.num_replicas>1 && this.nc.info.cluster!=undefined){
+                    if (consumerConfiguration.num_replicas>1 && this.nc.info && this.nc.info.cluster!=undefined){
+                        info.config.num_replicas=consumerConfiguration.num_replicas
+                        updatesDetected=true
+                    }else if(consumerConfiguration.num_replicas>1){
+                        this.logger.warn("replicas>1 not possible in non clustered mode")
+                        consumerConfiguration.num_replicas=0
+                    }else{
                         info.config.num_replicas=consumerConfiguration.num_replicas
                         updatesDetected=true
                     }
@@ -180,12 +184,10 @@ export class PubSubServiceImpl implements PubSubService {
             if (err instanceof NatsError) {
                 if (err.api_error.err_code === 10059) {
                     streamConfig.name = streamName
-                    if (streamConfig.num_replicas>0){
                         if (streamConfig.num_replicas>1 && this.nc.info.cluster==undefined){
                             this.logger.warn("replicas>1 not possible in non clustered mode")
                             streamConfig.num_replicas=0
                         }
-                    }
                     try {
                         await this.jsm.streams.add(streamConfig)
                         this.logger.info(" stream added successfully")
@@ -209,8 +211,7 @@ export class PubSubServiceImpl implements PubSubService {
             configChanged = true
         }
         if (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas > 0) {
-            if (toUpdateConfig.num_replicas > 1 && this.nc.info && this.nc.info.cluster !== undefined) {
-
+            if (toUpdateConfig.num_replicas>1 && this.nc.info && this.nc.info.cluster !== undefined) {
                 existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
                 configChanged = true
             } else if (toUpdateConfig.num_replicas > 1) {
