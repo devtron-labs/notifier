@@ -30,8 +30,9 @@ import { WebhookConfig } from './entities/webhookconfig';
 import * as process from "process";
 import bodyParser from 'body-parser';
 import {connect, NatsConnection} from "nats";
-import {PubSubServiceImpl} from "./pubSub/pubsub";
+
 import {NOTIFICATION_EVENT_TOPIC} from "./pubSub/utils";
+import {PubSubServiceImpl} from "./pubSub/pubSub";
 const app = express();
 app.use(bodyParser.json({ limit: '10mb' }));
 
