@@ -51,14 +51,13 @@ export class PubSubServiceImpl implements PubSubService {
 
 
         }).bindStream(streamName).callback((err, msg) => {
-
             try {
                 const msgString = getJsonString(msg.data)
                 callback(msgString)
-                msg.ack();
             } catch (err) {
                 this.logger.error("error occurred due to this:", err);
             }
+            msg.ack();
         })
         // *******Creating/Updating stream
 
