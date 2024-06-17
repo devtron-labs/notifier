@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2024. Devtron Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import express from 'express';
 import { NotificationService, Event, Handler } from './notification/service/notificationService'
 import "reflect-metadata"
@@ -34,7 +50,10 @@ import {connect, NatsConnection} from "nats";
 import {NOTIFICATION_EVENT_TOPIC} from "./pubSub/utils";
 import {PubSubServiceImpl} from "./pubSub/pubSub";
 const app = express();
+const natsUrl = process.env.NATS_URL
 app.use(bodyParser.json({ limit: '10mb' }));
+app.use(express.json());
+
 
 let logger = winston.createLogger({
     level: 'info',
@@ -50,7 +69,7 @@ let logger = winston.createLogger({
 let eventLogRepository: EventLogRepository = new EventLogRepository()
 let eventLogBuilder: EventLogBuilder = new EventLogBuilder()
 let slackConfigRepository: SlackConfigRepository = new SlackConfigRepository()
-let webhookConfigRepository:WebhookConfigRepository = new WebhookConfigRepository()
+let webhookConfigRepository: WebhookConfigRepository = new WebhookConfigRepository()
 let sesConfigRepository: SESConfigRepository = new SESConfigRepository()
 let smtpConfigRepository: SMTPConfigRepository = new SMTPConfigRepository()
 let usersRepository: UsersRepository = new UsersRepository()
@@ -68,14 +87,15 @@ handlers.push(smtpService)
 
 let notificationService = new NotificationService(new EventRepository(), new NotificationSettingsRepository(), new NotificationTemplatesRepository(), handlers, logger)
 
-const natsUrl = process.env.NATS_URL
+
+
+
 
 let dbHost: string = process.env.DB_HOST;
 const dbPort: number = +process.env.DB_PORT;
 const user: string = process.env.DB_USER;
 const pwd: string = process.env.DB_PWD;
 const db: string = process.env.DB;
-
 
 let dbOptions: ConnectionOptions = {
     type: "postgres",
@@ -115,7 +135,7 @@ const natsEventHandler = (msg: string) => {
 }
 app.get('/', (req, res) => res.send('Welcome to notifier Notifier!'))
 
-app.get('/health', (req, res) =>{
+app.get('/health', (req, res) => {
     res.status(200).send("healthy")
 })
 
@@ -123,7 +143,6 @@ app.get('/test', (req, res) => {
     send();
     res.send('Test!');
 })
-
 app.post('/notify', (req, res) => {
     logger.info("notifications Received")
     notificationService.sendNotification(req.body)
