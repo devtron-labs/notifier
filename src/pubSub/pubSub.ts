@@ -70,7 +70,7 @@ export class PubSubServiceImpl implements PubSubService {
         const maxAttempts =numberOfRetries ;
         let attempts = 0;
 
-        while (attempts < maxAttempts) {
+        while (attempts < maxAttempts) { //In the event of an error in the following flow, the notifier retries startup for a specified number of attempts instead of shutting down immediately
             try {
                 // *******Creating/Updating stream
                 await this.addOrUpdateStream(streamName, streamConfigParsed)
@@ -129,6 +129,12 @@ export class PubSubServiceImpl implements PubSubService {
         let updatesDetected: boolean = false
         try {
             const info: ConsumerInfo | null = await this.jsm.consumers.info(streamName, consumerName)
+            const streamInfo: StreamInfo | null = await this.jsm.streams.info(streamName)
+            if (streamInfo && info){
+                if(info.config.num_replicas==0) {
+                    info.config.num_replicas = streamInfo.config.num_replicas //By default, when the value is set to zero, consumers inherit the number of replicas from the stream.
+                }
+            }
             if (info) {
                 if (consumerConfiguration.ack_wait > 0 && info.config.ack_wait != consumerConfiguration.ack_wait) {
                     info.config.ack_wait = consumerConfiguration.ack_wait
@@ -209,18 +215,6 @@ export class PubSubServiceImpl implements PubSubService {
             existingStreamInfo.max_age = toUpdateConfig.max_age
             configChanged = true
         }
-        if (toUpdateConfig.num_replicas != existingStreamInfo.num_replicas && toUpdateConfig.num_replicas < 5 && toUpdateConfig.num_replicas > 0) {
-            if (toUpdateConfig.num_replicas>1 && this.nc.info && this.nc.info.cluster !== undefined) {
-                existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
-                configChanged = true
-            } else if (toUpdateConfig.num_replicas > 1) {
-                this.logger.warn("replicas > 1 is not possible in non-clustered mode")
-            } else {
-                existingStreamInfo.num_replicas = toUpdateConfig.num_replicas
-                configChanged = true
-
-            }
-        }
         if (!existingStreamInfo.subjects.includes(toUpdateConfig.subjects[0])) { // filter subject if not present already
             // If the value is not in the array, append it
             existingStreamInfo.subjects.push(toUpdateConfig.subjects[0]);
@@ -243,6 +237,6 @@ function getStreamConfig(streamConfig: NatsStreamConfig, streamName: string) {
     return {
         max_age: streamConfig.max_age,
         subjects: GetStreamSubjects(streamName),
-        num_replicas: streamConfig.num_replicas,
+        //num_replicas: streamConfig.num_replicas, Currently not supporting changing replica count of stream as it can be done from orchestrator side via publish function
     } as StreamConfig
 }
