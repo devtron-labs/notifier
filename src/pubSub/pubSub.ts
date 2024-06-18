@@ -186,10 +186,6 @@ export class PubSubServiceImpl implements PubSubService {
             if (err instanceof NatsError) {
                 if (err.api_error.err_code === 10059) {
                     streamConfig.name = streamName
-                        if (streamConfig.num_replicas>1 && this.nc.info.cluster==undefined){
-                            this.logger.warn("replicas > 1 is not possible in non clustered mode")
-                            streamConfig.num_replicas=0
-                        }
                     try {
                         await this.jsm.streams.add(streamConfig)
                         this.logger.info("stream added successfully")
