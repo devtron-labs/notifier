@@ -79,15 +79,18 @@ export class PubSubServiceImpl implements PubSubService {
 
                 // *** newConsumerFound check the consumer is new or not
 
-                const newConsumerFound = await this.updateConsumer(streamName, consumerName, consumerConfiguration)
+                const createNewConsumer = await this.updateConsumer(streamName, consumerName, consumerConfiguration)
 
                 // ********** Creating a consumer
 
-                if (newConsumerFound) {
+                if (createNewConsumer) {
                     try {
                         if (consumerConfiguration.num_replicas>1 && this.nc.info.cluster==undefined){
                                 this.logger.warn("replicas > 1 is not possible in non clustered mode")
-                                consumerConfiguration.num_replicas=0
+                            const streamInfo: StreamInfo | null = await this.jsm.streams.info(streamName)
+                               if (streamInfo){ // if consumer replica is zero it should inherit stream replicas
+                                   consumerConfiguration.num_replicas=streamInfo.config.num_replicas
+                               }
                         }
                         await this.jsm.consumers.add(streamName, {
                             name: consumerName,
