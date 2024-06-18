@@ -59,7 +59,7 @@ export class PubSubServiceImpl implements PubSubService {
                 const msgString = getJsonString(msg.data)
                 callback(msgString)
             } catch (err) {
-                this.logger.error("error occurred due to this:", err);
+                this.logger.error("msg: "+msg.data+" err: "+err);
             }
             msg.ack();
         }).queue(queueName)
