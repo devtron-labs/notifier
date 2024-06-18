@@ -1,4 +1,13 @@
-import {createInbox, JetStreamClient, NatsConnection, NatsError, StreamInfo, StringCodec} from "nats";
+import {
+    AckPolicy,
+    createInbox,
+    DeliverPolicy,
+    JetStreamClient,
+    NatsConnection,
+    NatsError,
+    StreamInfo,
+    StringCodec
+} from "nats";
 import {
     GetStreamSubjects,
     NatsConsumerConfig,
@@ -39,16 +48,21 @@ export class PubSubServiceImpl implements PubSubService {
         const natsTopicConfig: NatsTopic = NatsTopicMapping.get(topic)
         const streamName = natsTopicConfig.streamName
         const consumerName = natsTopicConfig.consumerName
+        //******* Getting consumer configuration
+
+        const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
         const queueName = natsTopicConfig.queueName
         const inbox = createInbox()
         const consumerOptsDetails = new ConsumerOptsBuilderImpl({
             name: consumerName,
             deliver_subject: inbox,
             durable_name: consumerName,
-            ack_wait: 120 * 1e9,
+            ack_wait: consumerConfiguration.ack_wait,
             num_replicas: 0,
             filter_subject: topic,
-
+            deliver_group:queueName,
+            ack_policy:AckPolicy.Explicit,
+            deliver_policy:DeliverPolicy.Last,
 
         }).bindStream(streamName).callback((err, msg) => {
             try {
@@ -58,16 +72,14 @@ export class PubSubServiceImpl implements PubSubService {
                 this.logger.error("msg: "+msg.data+" err: "+err);
             }
             msg.ack();
-        })
+        }).queue(queueName)
         // *******Creating/Updating stream
 
         const streamConfiguration = NatsStreamWiseConfigMapping.get(streamName)
         const streamConfigParsed = getStreamConfig(streamConfiguration, streamName)
         await this.addOrUpdateStream(streamName, streamConfigParsed)
 
-        //******* Getting consumer configuration
 
-        const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
 
         // *** newConsumerFound check the consumer is new or not
 
@@ -81,10 +93,12 @@ export class PubSubServiceImpl implements PubSubService {
                     name: consumerName,
                     deliver_subject: inbox,
                     durable_name: consumerName,
-                    ack_wait: 120 * 1e9,
+                    ack_wait: consumerConfiguration.ack_wait,
                     num_replicas: 0,
                     filter_subject: topic,
-
+                    deliver_group:queueName,
+                    ack_policy:AckPolicy.Explicit,
+                    deliver_policy:DeliverPolicy.Last,
                 })
                 this.logger.info("consumer added successfully")
             } catch (err) {
