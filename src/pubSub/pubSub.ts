@@ -141,12 +141,8 @@ export class PubSubServiceImpl implements PubSubService {
                     updatesDetected = true
                 }
                 if (consumerConfiguration.num_replicas > 0 && info.config.num_replicas!= consumerConfiguration.num_replicas){
-                    if (consumerConfiguration.num_replicas>1 && this.nc.info && this.nc.info.cluster!=undefined){
-                        info.config.num_replicas=consumerConfiguration.num_replicas
-                        updatesDetected=true
-                    }else if(consumerConfiguration.num_replicas>1){
+                    if (consumerConfiguration.num_replicas>1 && this.nc.info.cluster==undefined) {
                         this.logger.warn("replicas > 1 is not possible in non clustered mode")
-                        consumerConfiguration.num_replicas=0
                     }else{
                         info.config.num_replicas=consumerConfiguration.num_replicas
                         updatesDetected=true
