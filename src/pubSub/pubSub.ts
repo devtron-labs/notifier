@@ -132,16 +132,14 @@ export class PubSubServiceImpl implements PubSubService {
         let updatesDetected: boolean = false
         try {
             const info: ConsumerInfo | null = await this.jsm.consumers.info(streamName, consumerName)
-            const streamInfo: StreamInfo | null = await this.jsm.streams.info(streamName)
-            if (streamInfo && info){
-                if(info.config.num_replicas==0) {
-                    info.config.num_replicas = streamInfo.config.num_replicas //By default, when the value is set to zero, consumers inherit the number of replicas from the stream.
-                }
-            }
             if (info) {
                 if (consumerConfiguration.ack_wait > 0 && info.config.ack_wait != consumerConfiguration.ack_wait) {
                     info.config.ack_wait = consumerConfiguration.ack_wait
                     updatesDetected = true
+                }
+                const streamInfo: StreamInfo | null = await this.jsm.streams.info(streamName)
+                if(consumerConfiguration.num_replicas==0) {
+                    info.config.num_replicas = streamInfo.config.num_replicas //By default, when the value is set to zero, consumers inherit the number of replicas from the stream.
                 }
                 if (consumerConfiguration.num_replicas > 0 && info.config.num_replicas!= consumerConfiguration.num_replicas){
                     if (consumerConfiguration.num_replicas>1 && this.nc.info.cluster==undefined) {
