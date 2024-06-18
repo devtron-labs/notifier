@@ -54,6 +54,7 @@ export class PubSubServiceImpl implements PubSubService {
             deliver_group:queueName,
             ack_policy:AckPolicy.Explicit,
             deliver_policy:DeliverPolicy.Last,
+            max_ack_pending:1,
         }).bindStream(streamName).callback((err, msg) => {
             try {
                 const msgString = getJsonString(msg.data)
@@ -102,6 +103,7 @@ export class PubSubServiceImpl implements PubSubService {
                             deliver_group:queueName,
                             ack_policy:AckPolicy.Explicit,
                             deliver_policy:DeliverPolicy.Last,
+                            max_ack_pending:1,
                         })
                         this.logger.info("consumer added successfully")
                     } catch (err) {
