@@ -43,7 +43,6 @@ export class PubSubServiceImpl implements PubSubService {
         const consumerName = natsTopicConfig.consumerName
         //******* Getting consumer configuration
 
-        const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
         const queueName = natsTopicConfig.queueName
         const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
         const inbox = createInbox()
