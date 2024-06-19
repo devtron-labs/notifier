@@ -1,4 +1,4 @@
-import {createInbox, JetStreamClient, NatsConnection, NatsError, StreamInfo, StringCodec,ConsumerConfig,
+import {createInbox, JetStreamClient, NatsConnection, NatsError, StreamInfo, StringCodec,
     AckPolicy,
     DeliverPolicy} from "nats";
 import {
