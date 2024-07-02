@@ -15,6 +15,8 @@ import {ConsumerOptsBuilderImpl} from "nats/lib/nats-base-client/jsconsumeropts"
 
 import {ConsumerInfo, ConsumerUpdateConfig, JetStreamManager, StreamConfig} from "nats/lib/nats-base-client/types";
 
+const consumerNotFoundErrorCode = 10014;
+const streamNotFoundErrorCode = 10059;
 
 export interface PubSubService {
     Subscribe(topic: string, callback: (msg: string) => void): void
@@ -51,7 +53,6 @@ export class PubSubServiceImpl implements PubSubService {
             deliver_subject: inbox,
             durable_name: consumerName,
             ack_wait: consumerConfiguration.ack_wait,
-            num_replicas: consumerConfiguration.num_replicas,
             filter_subject: topic,
             deliver_group:queueName,
             ack_policy:AckPolicy.Explicit,
@@ -88,19 +89,14 @@ export class PubSubServiceImpl implements PubSubService {
 
                 if (createNewConsumer) {
                     try {
-                        const streamInfo: StreamInfo | null = await this.jsm.streams.info(streamName)
-                        if (streamInfo){ // consumer replica should inherit stream replicas
-                            consumerConfiguration.num_replicas=streamInfo.config.num_replicas
-                        }
-
                         await this.jsm.consumers.add(streamName, {
                             name: consumerName,
                             deliver_subject: inbox,
                             durable_name: consumerName,
                             ack_wait: consumerConfiguration.ack_wait,
-                            num_replicas: consumerConfiguration.num_replicas,
                             filter_subject: topic,
                             deliver_group:queueName,
+                            num_replicas: 0, // by setting this to zero,it will inherit replicas from stream
                             ack_policy:AckPolicy.Explicit,
                             deliver_policy:DeliverPolicy.Last,
                             max_ack_pending:1,
@@ -135,22 +131,20 @@ export class PubSubServiceImpl implements PubSubService {
         try {
             const info: ConsumerInfo | null = await this.jsm.consumers.info(streamName, consumerName)
             if (info) {
+
                 if (consumerConfiguration.ack_wait > 0 && info.config.ack_wait != consumerConfiguration.ack_wait) {
                     info.config.ack_wait = consumerConfiguration.ack_wait
                     updatesDetected = true
                 }
+
                 const streamInfo: StreamInfo | null = await this.jsm.streams.info(streamName)
-                if(consumerConfiguration.num_replicas==0) {
-                    info.config.num_replicas = streamInfo.config.num_replicas //By default, when the value is set to zero, consumers inherit the number of replicas from the stream.
-                }
-                if (consumerConfiguration.num_replicas > 0 && info.config.num_replicas!= consumerConfiguration.num_replicas){
-                    if (consumerConfiguration.num_replicas>1 && this.nc.info.cluster==undefined) {
-                        this.logger.warn("replicas > 1 is not possible in non clustered mode")
-                    }else{
-                        info.config.num_replicas=consumerConfiguration.num_replicas
-                        updatesDetected=true
+                if (streamInfo){
+                    if (info.config.num_replicas != streamInfo.config.num_replicas){
+                        info.config.num_replicas = streamInfo.config.num_replicas
+                        updatesDetected = true
                     }
                 }
+
                 if (updatesDetected === true) {
 
                     await this.jsm.consumers.update(streamName, consumerName, info.config)
@@ -162,7 +156,7 @@ export class PubSubServiceImpl implements PubSubService {
             if (err instanceof NatsError) {
                 this.logger.error("error occurred due to :", err)
 
-                if (err.api_error.err_code === 10014) { // 10014 error code depicts that consumer is not found
+                if (err.api_error.err_code === consumerNotFoundErrorCode) { // 10014 error code depicts that consumer is not found
                     return true
                 }
             }
@@ -186,7 +180,7 @@ export class PubSubServiceImpl implements PubSubService {
             }
         } catch (err) {
             if (err instanceof NatsError) {
-                if (err.api_error.err_code === 10059) {
+                if (err.api_error.err_code === streamNotFoundErrorCode) {
                     streamConfig.name = streamName
                     try {
                         await this.jsm.streams.add(streamConfig)

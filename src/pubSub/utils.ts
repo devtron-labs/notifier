@@ -19,7 +19,6 @@ export interface NatsTopic {
 
 export interface NatsConsumerConfig {
     ack_wait: number
-    num_replicas: number
 }
 
 export interface NatsStreamConfig {
@@ -41,7 +40,6 @@ export const NatsConsumerWiseConfigMapping = new Map<string, NatsConsumerConfig>
     [[NOTIFICATION_EVENT_DURABLE, {
 
         ack_wait: !isNaN(ackWait) ? ackWait * 1e9 : 30 * 1e9,
-        num_replicas: 1,
 
     }]
     ]);
