@@ -88,13 +88,11 @@ export class PubSubServiceImpl implements PubSubService {
 
                 if (createNewConsumer) {
                     try {
-                        if (consumerConfiguration.num_replicas>1 && this.nc.info.cluster==undefined){
-                                this.logger.warn("replicas > 1 is not possible in non clustered mode")
-                            const streamInfo: StreamInfo | null = await this.jsm.streams.info(streamName)
-                               if (streamInfo){ // if consumer replica is zero it should inherit stream replicas
-                                   consumerConfiguration.num_replicas=streamInfo.config.num_replicas
-                               }
+                        const streamInfo: StreamInfo | null = await this.jsm.streams.info(streamName)
+                        if (streamInfo){ // if consumer replica should inherit stream replicas
+                            consumerConfiguration.num_replicas=streamInfo.config.num_replicas
                         }
+
                         await this.jsm.consumers.add(streamName, {
                             name: consumerName,
                             deliver_subject: inbox,
