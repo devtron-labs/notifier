@@ -1,13 +1,6 @@
-import {
+import {createInbox, JetStreamClient, NatsConnection, NatsError, StreamInfo, StringCodec,
     AckPolicy,
-    createInbox,
-    DeliverPolicy,
-    JetStreamClient,
-    NatsConnection,
-    NatsError,
-    StreamInfo,
-    StringCodec
-} from "nats";
+    DeliverPolicy} from "nats";
 import {
     GetStreamSubjects,
     NatsConsumerConfig,
@@ -15,13 +8,15 @@ import {
     NatsStreamConfig,
     NatsStreamWiseConfigMapping,
     NatsTopic,
-    NatsTopicMapping,
-} from "./utils";
+    NatsTopicMapping, numberOfRetries,
 
+} from "./utils";
 import {ConsumerOptsBuilderImpl} from "nats/lib/nats-base-client/jsconsumeropts";
 
 import {ConsumerInfo, ConsumerUpdateConfig, JetStreamManager, StreamConfig} from "nats/lib/nats-base-client/types";
 
+const consumerNotFoundErrorCode = 10014;
+const streamNotFoundErrorCode = 10059;
 
 export interface PubSubService {
     Subscribe(topic: string, callback: (msg: string) => void): void
@@ -50,20 +45,19 @@ export class PubSubServiceImpl implements PubSubService {
         const consumerName = natsTopicConfig.consumerName
         //******* Getting consumer configuration
 
-        const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
         const queueName = natsTopicConfig.queueName
+        const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
         const inbox = createInbox()
         const consumerOptsDetails = new ConsumerOptsBuilderImpl({
             name: consumerName,
             deliver_subject: inbox,
             durable_name: consumerName,
             ack_wait: consumerConfiguration.ack_wait,
-            num_replicas: 0,
             filter_subject: topic,
             deliver_group:queueName,
             ack_policy:AckPolicy.Explicit,
             deliver_policy:DeliverPolicy.Last,
-           max_ack_pending:1,
+            max_ack_pending:1,
         }).bindStream(streamName).callback((err, msg) => {
             try {
                 const msgString = getJsonString(msg.data)
@@ -73,76 +67,96 @@ export class PubSubServiceImpl implements PubSubService {
             }
             msg.ack();
         }).queue(queueName)
-        // *******Creating/Updating stream
 
         const streamConfiguration = NatsStreamWiseConfigMapping.get(streamName)
         const streamConfigParsed = getStreamConfig(streamConfiguration, streamName)
-        await this.addOrUpdateStream(streamName, streamConfigParsed)
 
+        const maxAttempts =numberOfRetries ;
+        let attempts = 0;
 
-
-        // *** newConsumerFound check the consumer is new or not
-
-        const newConsumerFound = await this.updateConsumer(streamName, consumerName, consumerConfiguration)
-
-        // ********** Creating a consumer
-
-        if (newConsumerFound) {
+        while (attempts < maxAttempts) { //In the event of an error in the following flow, the notifier retries startup for a specified number of attempts instead of shutting down immediately
             try {
-                await this.jsm.consumers.add(streamName, {
-                    name: consumerName,
-                    deliver_subject: inbox,
-                    durable_name: consumerName,
-                    ack_wait: consumerConfiguration.ack_wait,
-                    num_replicas: 0,
-                    filter_subject: topic,
-                    deliver_group:queueName,
-                    ack_policy:AckPolicy.Explicit,
-                    deliver_policy:DeliverPolicy.Last,
-                    max_ack_pending:1,
-                })
-                this.logger.info("consumer added successfully")
+                // *******Creating/Updating stream
+                await this.addOrUpdateStream(streamName, streamConfigParsed)
+
+                //******* Getting consumer configuration
+
+                // *** newConsumerFound check the consumer is new or not
+
+                const createNewConsumer = await this.updateConsumer(streamName, consumerName, consumerConfiguration)
+
+                // ********** Creating a consumer
+
+                if (createNewConsumer) {
+                    try {
+                        await this.jsm.consumers.add(streamName, {
+                            name: consumerName,
+                            deliver_subject: inbox,
+                            durable_name: consumerName,
+                            ack_wait: consumerConfiguration.ack_wait,
+                            filter_subject: topic,
+                            deliver_group:queueName,
+                            num_replicas: 0, // by setting this to zero,it will inherit replicas from stream
+                            ack_policy:AckPolicy.Explicit,
+                            deliver_policy:DeliverPolicy.Last,
+                            max_ack_pending:1,
+                        })
+                        this.logger.info("consumer added successfully")
+                    } catch (err) {
+                        this.logger.error("error occurred while adding consumer", err)
+                    }
+                }
+
+                // ****** NATS Subscribe function
+                await this.js.subscribe(topic, consumerOptsDetails)
+                this.logger.info("subscribed to nats successfully")
+
+                break;
             } catch (err) {
-                this.logger.error("error occurred while adding consumer", err)
+                this.logger.error("unsuccessful in subscribing to NATS", err);
+                attempts++;
+                if (attempts === maxAttempts) {
+                    this.logger.error("Maximum restart attempts reached. Exiting loop.");
+                } else {
+                    const delayInMilliseconds = 5000; // 5 seconds
+                    await new Promise(resolve => setTimeout(resolve, delayInMilliseconds));
+                }
             }
-
-
         }
-
-        // *********  Nats Subscribe() function
-        try {
-            await this.js.subscribe(topic, consumerOptsDetails)
-            this.logger.info("subscribed to nats successfully")
-
-        } catch (err) {
-            this.logger.error("error occurred while subscribing", err)
-        }
-
 
     }
-
 
     async updateConsumer(streamName: string, consumerName: string, consumerConfiguration: NatsConsumerConfig): Promise<boolean> {
         let updatesDetected: boolean = false
         try {
             const info: ConsumerInfo | null = await this.jsm.consumers.info(streamName, consumerName)
             if (info) {
+
                 if (consumerConfiguration.ack_wait > 0 && info.config.ack_wait != consumerConfiguration.ack_wait) {
                     info.config.ack_wait = consumerConfiguration.ack_wait
                     updatesDetected = true
                 }
+
+                const streamInfo: StreamInfo | null = await this.jsm.streams.info(streamName)
+                if (streamInfo){
+                    if (info.config.num_replicas != streamInfo.config.num_replicas){
+                        info.config.num_replicas = streamInfo.config.num_replicas
+                        updatesDetected = true
+                    }
+                }
+
                 if (updatesDetected === true) {
 
                     await this.jsm.consumers.update(streamName, consumerName, info.config)
-                    this.logger.info("consumer updated successfully, consumerName: ", consumerName)
+                    this.logger.info("consumer updated successfully, consumerName: "+ consumerName)
 
                 }
             }
         } catch (err) {
             if (err instanceof NatsError) {
-                this.logger.error("error occurred due to reason:", err)
+                this.logger.error("error occurred due to :", err)
 
-                if (err.api_error.err_code === 10014) { // 10014 error code depicts that consumer is not found
+                if (err.api_error.err_code === consumerNotFoundErrorCode) { // 10014 error code depicts that consumer is not found
                     return true
                 }
             }
@@ -166,18 +180,14 @@ export class PubSubServiceImpl implements PubSubService {
             }
         } catch (err) {
             if (err instanceof NatsError) {
-                if (err.api_error.err_code === 10059) {
-
-                    // const cfgToSet = getNewConfig(streamName, streamConfig)
+                if (err.api_error.err_code === streamNotFoundErrorCode) {
                     streamConfig.name = streamName
                     try {
                         await this.jsm.streams.add(streamConfig)
-                        this.logger.info(" stream added successfully")
+                        this.logger.info("stream added successfully")
                     } catch (err) {
                         this.logger.error("error occurred during adding streams", err)
                     }
-
-
                 } else {
                     this.logger.error("error occurred due to :", err)
                 }
@@ -194,11 +204,11 @@ export class PubSubServiceImpl implements PubSubService {
             existingStreamInfo.max_age = toUpdateConfig.max_age
             configChanged = true
         }
-            if (!existingStreamInfo.subjects.includes(toUpdateConfig.subjects[0])) { // filter subject if not present already
-                // If the value is not in the array, append it
-                existingStreamInfo.subjects.push(toUpdateConfig.subjects[0]);
-                configChanged = true
-            }
+        if (!existingStreamInfo.subjects.includes(toUpdateConfig.subjects[0])) { // filter subject if not present already
+            // If the value is not in the array, append it
+            existingStreamInfo.subjects.push(toUpdateConfig.subjects[0]);
+            configChanged = true
+        }
 
         return configChanged
     }
@@ -216,6 +226,6 @@ function getStreamConfig(streamConfig: NatsStreamConfig, streamName: string) {
     return {
         max_age: streamConfig.max_age,
         subjects: GetStreamSubjects(streamName),
+        //num_replicas: streamConfig.num_replicas, Currently not supporting changing replica count of stream as it can be done from orchestrator side via publish function
     } as StreamConfig
 }
-

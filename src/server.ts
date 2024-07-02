@@ -15,40 +15,40 @@
  */
 
 import express from 'express';
-import {Event, Handler, NotificationService} from './notification/service/notificationService'
+import { NotificationService, Event, Handler } from './notification/service/notificationService'
 import "reflect-metadata"
-import {ConnectionOptions, createConnection} from "typeorm"
-import {NotificationSettingsRepository} from "./repository/notificationSettingsRepository"
-import {SlackService} from './destination/destinationHandlers/slackHandler'
-import {SESService} from './destination/destinationHandlers/sesHandler'
-import {SMTPService} from './destination/destinationHandlers/smtpHandler'
-import {EventLogRepository} from './repository/notifierEventLogRepository'
-import {EventLogBuilder} from './common/eventLogBuilder'
-import {EventRepository} from './repository/eventsRepository'
-import {NotificationTemplatesRepository} from "./repository/templatesRepository";
-import {SlackConfigRepository} from "./repository/slackConfigRepository";
-import {NotificationSettings} from "./entities/notificationSettings";
-import {NotifierEventLog} from "./entities/notifierEventLogs";
-import {NotificationTemplates} from "./entities/notificationTemplates";
-import {SlackConfig} from "./entities/slackConfig";
+import {ConnectionOptions, createConnection, getConnectionOptions, getManager} from "typeorm"
+import { NotificationSettingsRepository } from "./repository/notificationSettingsRepository"
+import { SlackService } from './destination/destinationHandlers/slackHandler'
+import { SESService } from './destination/destinationHandlers/sesHandler'
+import { SMTPService } from './destination/destinationHandlers/smtpHandler'
+import { EventLogRepository } from './repository/notifierEventLogRepository'
+import { EventLogBuilder } from './common/eventLogBuilder'
+import { EventRepository } from './repository/eventsRepository'
+import { NotificationTemplatesRepository } from "./repository/templatesRepository";
+import { SlackConfigRepository } from "./repository/slackConfigRepository";
+import { NotificationSettings } from "./entities/notificationSettings";
+import { NotifierEventLog } from "./entities/notifierEventLogs";
+import { NotificationTemplates } from "./entities/notificationTemplates";
+import { SlackConfig } from "./entities/slackConfig";
 import * as winston from 'winston';
-import {SesConfig} from "./entities/sesConfig";
-import {SESConfigRepository} from "./repository/sesConfigRepository";
-import {SMTPConfig} from "./entities/smtpConfig";
-import {SMTPConfigRepository} from "./repository/smtpConfigRepository";
-import {UsersRepository} from './repository/usersRepository';
-import {Users} from "./entities/users";
-import {MustacheHelper} from './common/mustacheHelper';
-import {WebhookConfigRepository} from './repository/webhookConfigRepository';
-import {WebhookService} from './destination/destinationHandlers/webhookHandler';
-import {WebhookConfig} from './entities/webhookconfig';
+import { SesConfig } from "./entities/sesConfig";
+import { SESConfigRepository } from "./repository/sesConfigRepository";
+import { SMTPConfig } from "./entities/smtpConfig";
+import { SMTPConfigRepository } from "./repository/smtpConfigRepository";
+import { UsersRepository } from './repository/usersRepository';
+import { Users } from "./entities/users";
+import { send } from './tests/sendSlackNotification';
+import { MustacheHelper } from './common/mustacheHelper';
+import { WebhookConfigRepository } from './repository/webhookConfigRepository';
+import { WebhookService } from './destination/destinationHandlers/webhookHandler';
+import { WebhookConfig } from './entities/webhookconfig';
 import * as process from "process";
+import bodyParser from 'body-parser';
 import {connect, NatsConnection} from "nats";
+
 import {NOTIFICATION_EVENT_TOPIC} from "./pubSub/utils";
 import {PubSubServiceImpl} from "./pubSub/pubSub";
-import {send} from "./tests/sendSlackNotification";
-import bodyParser from "body-parser";
-
 const app = express();
 const natsUrl = process.env.NATS_URL
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -88,14 +88,14 @@ handlers.push(smtpService)
 let notificationService = new NotificationService(new EventRepository(), new NotificationSettingsRepository(), new NotificationTemplatesRepository(), handlers, logger)
 
 
+
+
+
 let dbHost: string = process.env.DB_HOST;
 const dbPort: number = +process.env.DB_PORT;
 const user: string = process.env.DB_USER;
 const pwd: string = process.env.DB_PWD;
 const db: string = process.env.DB;
-
-
-
 
 let dbOptions: ConnectionOptions = {
     type: "postgres",
@@ -106,13 +106,14 @@ let dbOptions: ConnectionOptions = {
     database: db,
     entities: [NotificationSettings, NotifierEventLog, Event, NotificationTemplates, SlackConfig, SesConfig, SMTPConfig, WebhookConfig, Users]
 }
+
 createConnection(dbOptions).then(async connection => {
     logger.info("Connected to DB")
     if(natsUrl){
         let conn: NatsConnection
         (async () => {
             logger.info("Connecting to NATS server...");
-            conn = await connect({servers: natsUrl})
+            conn = await connect({servers:natsUrl})
             const jsm = await conn.jetstreamManager()
             const obj = new PubSubServiceImpl(conn, jsm,logger)
             await obj.Subscribe(NOTIFICATION_EVENT_TOPIC, natsEventHandler)
@@ -122,20 +123,16 @@ createConnection(dbOptions).then(async connection => {
             }
         )
     }
-
 }).catch(error => {
     logger.error("TypeORM connection error: ", error);
     logger.error("shutting down notifier due to un-successful database connection...")
     process.exit(1)
 });
-
 const natsEventHandler = (msg: string) => {
     const eventAsString = JSON.parse(msg)
     const event = JSON.parse(eventAsString) as Event
     notificationService.sendNotification(event)
 }
-
-
 app.get('/', (req, res) => res.send('Welcome to notifier Notifier!'))
 
 app.get('/health', (req, res) => {
