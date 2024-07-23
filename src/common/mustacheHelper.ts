@@ -399,11 +399,12 @@ export class MustacheHelper {
 
         // removing space from all keys of data map , as rendering issue with space in key in mustashe template
         let _modifiedDataMap = {};
-        Object.keys(webhookDataMap).forEach((_key) => {
-            let _modifiedKey = _key.replace(/\s/g, '');
-            _modifiedDataMap[_modifiedKey] = webhookDataMap[_key];
-        })
-
+        if (!!webhookDataMap) {
+            Object.keys(webhookDataMap).forEach((_key) => {
+                let _modifiedKey = _key.replace(/\s/g, '');
+                _modifiedDataMap[_modifiedKey] = webhookDataMap[_key];
+            })
+        }
         return _modifiedDataMap;
 
     }
