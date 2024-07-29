@@ -26,6 +26,7 @@ import {SlackConfigRepository} from "../../repository/slackConfigRepository";
 import {MustacheHelper} from '../../common/mustacheHelper';
 import {EVENT_TYPE} from "../../common/types";
 import moment from "moment-timezone";
+import {CustomError} from "../../entities/events";
 
 //https://github.com/notifme/notifme-sdk/blob/master/src/models/notification-request.js#L132
 export class SlackService implements Handler {
@@ -144,7 +145,7 @@ export class SlackService implements Handler {
             return res;
         } catch (error) {
             this.logger.error('slack sendNotification error', error)
-            throw new Error('Unable to send notification');
+            throw new CustomError("Unable to send slack notification",500);
         }
     }
 

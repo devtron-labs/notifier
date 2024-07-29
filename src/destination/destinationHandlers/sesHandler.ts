@@ -26,6 +26,7 @@ import {SESConfigRepository} from "../../repository/sesConfigRepository";
 import {UsersRepository} from "../../repository/usersRepository";
 import { MustacheHelper } from '../../common/mustacheHelper';
 import {EVENT_TYPE} from "../../common/types";
+import {CustomError} from "../../entities/events";
 
 //https://github.com/notifme/notifme-sdk/blob/master/src/models/notification-request.js#L132
 
@@ -100,7 +101,7 @@ export class SESService implements Handler {
             }
         } catch (error) {
             this.logger.error('getDefaultConfig', error)
-            throw new Error('Unable to get default SES config');
+            throw new CustomError("Unable to send ses notification",500);
         }
     }
 
@@ -200,7 +201,7 @@ export class SESService implements Handler {
             return res;
         } catch (error) {
             this.logger.error('ses sendNotification error', error)
-            throw new Error('Unable to send ses notification');
+            throw new CustomError("Unable to send ses notification",500);
         }
     }
 
