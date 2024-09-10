@@ -98,8 +98,8 @@ export class NotificationSettingsRepository {
             .orWhere(
               new Brackets((qb) => {
                 qb.where("ns.app_id = :appId", { appId: appId })
-                  .andWhere("ns.env_id is NULL")
-                  .andWhere("ns.team_id = :teamId", { teamId: teamId })
+                  .andWhere("ns.team_id is NULL")
+                  .andWhere("ns.env_id = :envId", { envId: envId })
                   .andWhere("ns.pipeline_id is NULL");
               })
             )
