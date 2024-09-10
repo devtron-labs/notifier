@@ -16,12 +16,20 @@
 
 import {NotificationSettings} from "../entities/notificationSettings";
 import {Brackets, getManager} from "typeorm";
+import {ENV_TYPE_INT} from "../common/types";
 
 export class NotificationSettingsRepository {
-    async findByEventSource(pipelineType: string, pipelineId: number, eventTypeId: number, appId: number, envId: number, teamId: number): Promise<NotificationSettings[]> {
+    async findByEventSource(pipelineType: string, pipelineId: number, eventTypeId: number, appId: number, envId: number, teamId: number, clusterId: number, isProdEnv: boolean): Promise<NotificationSettings[]> {
         if (eventTypeId == 6){//this is the case when deployment is blocked and pipeline is set to auto trigger
             eventTypeId = 3
         }
+
+        var envIdentifier = ENV_TYPE_INT.AllExistingAndFutureNonProdEnvs
+        if (isProdEnv === true){
+            envIdentifier = ENV_TYPE_INT.AllExistingAndFutureProdEnvs
+        }
+
+
         return await getManager().getRepository(NotificationSettings).createQueryBuilder("ns")
             .where("ns.pipeline_type = :pipelineType", {pipelineType: pipelineType})
             .andWhere("ns.event_type_id = :eventTypeId", {eventTypeId: eventTypeId})
@@ -61,6 +69,40 @@ export class NotificationSettingsRepository {
                                                                         .andWhere("ns.env_id = :envId", {envId: envId})
                                                                         .andWhere("ns.team_id = :teamId", {teamId: teamId})
                                                                         .orWhere("ns.pipeline_id = :pipelineId", {pipelineId: pipelineId})
+                                                                        .orWhere(new Brackets(qb => {
+                                                                            qb.where("ns.app_id =:appid",{appId: appId})
+                                                                                .andWhere("ns.env_id is NULL")
+                                                                                .andWhere("ns.cluster_id = :clusterId", {clusterId: clusterId})
+                                                                                .orWhere(new Brackets(qb => {
+                                                                                    qb.where("ns.app_id is NULL")
+                                                                                        .andWhere("ns.env_id is NULL")
+                                                                                        .andWhere("ns.team_id = :teamId",{teamId: teamId})
+                                                                                        .andWhere("ns.cluster_id = :clusterId", {clusterId: clusterId})
+                                                                                        .orWhere(new Brackets(qb => {
+                                                                                            qb.where("ns.app_id is NULL ")
+                                                                                                .andWhere("ns.env_id is NULL")
+                                                                                                .andWhere("ns.team_id is NULL")
+                                                                                                .andWhere("ns.cluster_id = :clusterId", {clusterId: clusterId})
+                                                                                                .orWhere(new Brackets(qb => {
+                                                                                                    qb.where("ns.app_id =:appid",{appId: appId})
+                                                                                                        .andWhere("ns.env_id = :envId", {envId: envIdentifier})
+                                                                                                        .andWhere("ns.cluster_id = :clusterId", {clusterId: clusterId})
+                                                                                                        .orWhere(new Brackets(qb => {
+                                                                                                            qb.where("ns.app_id is NULL")
+                                                                                                                .andWhere("ns.env_id = :envId", {envId: envIdentifier})
+                                                                                                                .andWhere("ns.team_id = :teamId",{teamId: teamId})
+                                                                                                                .andWhere("ns.cluster_id = :clusterId", {clusterId: clusterId})
+                                                                                                                .orWhere(new Brackets(qb => {
+                                                                                                                    qb.where("ns.app_id is NULL ")
+                                                                                                                        .andWhere("ns.env_id = :envId", {envId: envIdentifier})
+                                                                                                                        .andWhere("ns.team_id is NULL")
+                                                                                                                        .andWhere("ns.cluster_id = :clusterId", {clusterId: clusterId})
+                                                                                                                }))
+                                                                                                        }))
+                                                                                                }))
+                                                                                        }))
+                                                                                }))
+                                                                        }))
                                                                 }))
                                                         }))
                                                 }))
