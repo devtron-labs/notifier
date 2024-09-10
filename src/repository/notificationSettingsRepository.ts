@@ -62,6 +62,15 @@ export class NotificationSettingsRepository {
                   .andWhere("ns.pipeline_id is NULL");
               })
             )
+              .orWhere(
+                  new Brackets((qb) => {
+                      qb.where("ns.app_id is NULL")
+                          .andWhere("ns.env_id = :envId", { envIdentifier: envIdentifier })
+                          .andWhere("ns.team_id is NULL")
+                          .andWhere("ns.pipeline_id is NULL");
+                  })
+              )
+
             .orWhere(
               new Brackets((qb) => {
                 qb.where("ns.app_id is NULL")
