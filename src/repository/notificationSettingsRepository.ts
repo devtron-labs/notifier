@@ -19,6 +19,7 @@ import { Brackets, getManager } from "typeorm";
 import { ENV_TYPE_INT } from "../common/types";
 
 export class NotificationSettingsRepository {
+  // note: if the query in this func is changed, please update the same query in orchestrator
   async findByEventSource(
     pipelineType: string,
     pipelineId: number,
