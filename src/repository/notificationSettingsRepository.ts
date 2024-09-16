@@ -22,52 +22,110 @@ export class NotificationSettingsRepository {
         if (eventTypeId == 6){//this is the case when deployment is blocked and pipeline is set to auto trigger
             eventTypeId = 3
         }
-        return await getManager().getRepository(NotificationSettings).createQueryBuilder("ns")
-            .where("ns.pipeline_type = :pipelineType", {pipelineType: pipelineType})
-            .andWhere("ns.event_type_id = :eventTypeId", {eventTypeId: eventTypeId})
+        var queryObj = getManager()
+            .getRepository(NotificationSettings)
+            .createQueryBuilder("ns")
+            .where("ns.pipeline_type = :pipelineType", { pipelineType: pipelineType })
+            .andWhere("ns.event_type_id = :eventTypeId", { eventTypeId: eventTypeId })
             .andWhere(
-                new Brackets(qb => {
-                    qb.where("ns.app_id = :appId", {appId: appId})
-                        .andWhere("ns.env_id is NULL")
-                        .andWhere("ns.team_id is NULL")
-                        .andWhere("ns.pipeline_id is NULL")
-                        .orWhere(new Brackets(qb => {
-                            qb.where("ns.app_id is NULL")
-                                .andWhere("ns.env_id = :envId", {envId: envId})
+                new Brackets((qb) => {
+                    qb.where(
+                        new Brackets((qb) => {
+                            qb.where("ns.app_id = :appId", { appId: appId })
+                                .andWhere("ns.env_id is NULL")
                                 .andWhere("ns.team_id is NULL")
-                                .andWhere("ns.pipeline_id is NULL")
-                                .orWhere(new Brackets(qb => {
-                                    qb.where("ns.app_id is NULL")
-                                        .andWhere("ns.env_id is NULL")
-                                        .andWhere("ns.team_id = :teamId", {teamId: teamId})
-                                        .andWhere("ns.pipeline_id is NULL")
-                                        .orWhere(new Brackets(qb => {
-                                            qb.where("ns.app_id is NULL")
-                                                .andWhere("ns.env_id is NULL")
-                                                .andWhere("ns.team_id is NULL")
-                                                .andWhere("ns.pipeline_id = :pipelineId", {pipelineId: pipelineId})
-                                                .orWhere(new Brackets(qb => {
-                                                    qb.where("ns.app_id is NULL")
-                                                        .andWhere("ns.env_id = :envId", {envId: envId})
-                                                        .andWhere("ns.team_id = :teamId", {teamId: teamId})
-                                                        .andWhere("ns.pipeline_id is NULL")
-                                                        .orWhere(new Brackets(qb => {
-                                                            qb.where("ns.app_id = :appId", {appId: appId})
-                                                                .andWhere("ns.env_id is NULL")
-                                                                .andWhere("ns.team_id = :teamId", {teamId: teamId})
-                                                                .andWhere("ns.pipeline_id is NULL")
-                                                                .orWhere(new Brackets(qb => {
-                                                                    qb.where("ns.app_id = :appId", {appId: appId})
-                                                                        .andWhere("ns.env_id = :envId", {envId: envId})
-                                                                        .andWhere("ns.team_id = :teamId", {teamId: teamId})
-                                                                        .orWhere("ns.pipeline_id = :pipelineId", {pipelineId: pipelineId})
-                                                                }))
-                                                        }))
-                                                }))
-                                        }))
-                                }))
-                        }))
-                })).getMany()
+                                .andWhere("ns.pipeline_id is NULL");
+                        })
+                    )
+                        .orWhere(
+                            new Brackets((qb) => {
+                                qb.where("ns.app_id is NULL")
+                                    .andWhere("ns.env_id = :envId", { envId: envId })
+                                    .andWhere("ns.team_id is NULL")
+                                    .andWhere("ns.pipeline_id is NULL");
+                            })
+                        )
+                        .orWhere(
+                            new Brackets((qb) => {
+                                qb.where("ns.app_id is NULL")
+                                    .andWhere("ns.env_id = :envIdentifier", {
+                                        envIdentifier: envId,
+                                    })
+                                    .andWhere("ns.team_id is NULL")
+                                    .andWhere("ns.pipeline_id is NULL");
+                            })
+                        )
+
+                        .orWhere(
+                            new Brackets((qb) => {
+                                qb.where("ns.app_id is NULL")
+                                    .andWhere("ns.env_id is NULL")
+                                    .andWhere("ns.team_id = :teamId", { teamId: teamId })
+                                    .andWhere("ns.pipeline_id is NULL");
+                            })
+                        )
+                        .orWhere(
+                            new Brackets((qb) => {
+                                qb.where("ns.app_id is NULL")
+                                    .andWhere("ns.env_id is NULL")
+                                    .andWhere("ns.team_id is NULL")
+                                    .andWhere("ns.pipeline_id = :pipelineId", {
+                                        pipelineId: pipelineId,
+                                    });
+                            })
+                        )
+                        .orWhere(
+                            new Brackets((qb) => {
+                                qb.where("ns.app_id is NULL")
+                                    .andWhere("ns.env_id = :envId", { envId: envId })
+                                    .andWhere("ns.team_id = :teamId", { teamId: teamId })
+                                    .andWhere("ns.pipeline_id is NULL");
+                            })
+                        )
+                        .orWhere(
+                            new Brackets((qb) => {
+                                qb.where("ns.app_id is NULL")
+                                    .andWhere("ns.env_id = :envIdentifier", {
+                                        envIdentifier: envId,
+                                    })
+                                    .andWhere("ns.team_id = :teamId", { teamId: teamId })
+                                    .andWhere("ns.pipeline_id is NULL");
+                            })
+                        )
+                        .orWhere(
+                            new Brackets((qb) => {
+                                qb.where("ns.app_id = :appId", { appId: appId })
+                                    .andWhere("ns.team_id is NULL")
+                                    .andWhere("ns.env_id = :envId", { envId: envId })
+                                    .andWhere("ns.pipeline_id is NULL");
+                            })
+                        )
+                        .orWhere(
+                            new Brackets((qb) => {
+                                qb.where("ns.app_id = :appId", { appId: appId })
+                                    .andWhere("ns.team_id is NULL")
+                                    .andWhere("ns.env_id = :envIdentifier", {
+                                        envIdentifier: envId,
+                                    })
+                                    .andWhere("ns.pipeline_id is NULL");
+                            })
+                        )
+                        .orWhere(
+                            new Brackets((qb) => {
+                                qb.where("ns.app_id = :appId", { appId: appId })
+                                    .andWhere("ns.env_id = :envId", { envId: envId })
+                                    .andWhere("ns.team_id = :teamId", { teamId: teamId })
+                                    .orWhere("ns.pipeline_id = :pipelineId", {
+                                        pipelineId: pipelineId,
+                                    });
+                            })
+                        )
+                    ;
+                })
+            );
+        // var query = queryObj.getQuery();
+        // var params = queryObj.getParameters();
+        return await queryObj.getMany();
     }
 }
 
