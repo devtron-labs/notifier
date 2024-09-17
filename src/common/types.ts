@@ -48,6 +48,7 @@ export interface vulnerability {
     permission: string;
 }
 export interface severityCount  {
+    critical: number;
     high: number;
     moderate: number;
     low: number;
