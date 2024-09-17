@@ -27,18 +27,23 @@
         "@types/mustache": "^0.8.32",
         "@types/node": "^12.0.2",
         "@types/request": "^2.48.1",
+        "axios": "^1.7.7",
         "body-parser": "^1.20.2",
-        "axios": "1.6.8",
         "express": "^4.19.2",
         "js-yaml": "^3.13.1",
         "json-rules-engine": "^2.3.6",
         "moment-timezone": "^0.5.31",
         "mustache": "^3.0.1",
         "nats": "2.10.0",
-        "notifme-sdk": "^1.14.1",
+        "notifme-sdk": "^1.16.13",
         "pg": "^8.2.1",
         "reflect-metadata": "^0.1.13",
         "typeorm": "0.3.17",
         "winston": "^3.2.1"
+    },
+    "overrides": {
+        "node-gcm": {
+            "axios": "1.7.7"
+        }
     }
 }
