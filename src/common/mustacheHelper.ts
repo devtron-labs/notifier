@@ -322,7 +322,7 @@ export class MustacheHelper {
             return {
                 critical: imageScanExecutionInfo.severityCount.critical,
                 high: imageScanExecutionInfo.severityCount.high,
-                moderate: imageScanExecutionInfo.severityCount.moderate,
+                medium: imageScanExecutionInfo.severityCount.medium,
                 low: imageScanExecutionInfo.severityCount.low,
               }
             } else{

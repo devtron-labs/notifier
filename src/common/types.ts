@@ -50,9 +50,9 @@ export interface vulnerability {
 export interface severityCount  {
     critical: number;
     high: number;
-    moderate: number;
+    medium: number;
     low: number;
-} 
+}
 export interface WebhookParsedEvent {
     eventType?: string;
     devtronAppId?: number;
