@@ -320,8 +320,9 @@ export class MustacheHelper {
     mapSeverityCount(imageScanExecutionInfo:any):severityCount | {} {
         if (imageScanExecutionInfo && imageScanExecutionInfo.severityCount){
             return {
+                critical: imageScanExecutionInfo.severityCount.critical,
                 high: imageScanExecutionInfo.severityCount.high,
-                moderate: imageScanExecutionInfo.severityCount.moderate,
+                medium: imageScanExecutionInfo.severityCount.medium,
                 low: imageScanExecutionInfo.severityCount.low,
               }
             } else{
