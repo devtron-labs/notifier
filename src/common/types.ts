@@ -147,3 +147,7 @@ export enum EVENT_TYPE {
     ScoopNotification = 9,
 }
 
+export enum ENV_TYPE_INT{
+    AllExistingAndFutureProdEnvs = -2,
+    AllExistingAndFutureNonProdEnvs = -1
+}

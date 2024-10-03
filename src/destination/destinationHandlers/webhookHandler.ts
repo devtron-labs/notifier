@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-import {Event, Handler} from '../../notification/service/notificationService';
-import Mustache from 'mustache';
-import Engine from 'json-rules-engine'
-import {EventLogBuilder} from "../../common/eventLogBuilder"
-import {EventLogRepository} from '../../repository/notifierEventLogRepository';
-import { WebhookConfig } from '../../entities/webhookconfig';
-import {NotificationSettings} from "../../entities/notificationSettings";
-import { WebhookConfigRepository } from '../../repository/webhookConfigRepository';
-import {MustacheHelper} from '../../common/mustacheHelper';
 import axios from 'axios';
-import {EVENT_TYPE, WebhookParsedEvent} from "../../common/types";
+import Engine from 'json-rules-engine';
 import moment from "moment-timezone";
+import Mustache from 'mustache';
+import { EventLogBuilder } from "../../common/eventLogBuilder";
+import { MustacheHelper } from '../../common/mustacheHelper';
+import { EVENT_TYPE } from "../../common/types";
+import { NotificationSettings } from "../../entities/notificationSettings";
+import { WebhookConfig } from '../../entities/webhookconfig';
+import { Event, Handler } from '../../notification/service/notificationService';
+import { EventLogRepository } from '../../repository/notifierEventLogRepository';
+import { WebhookConfigRepository } from '../../repository/webhookConfigRepository';
 
 export class WebhookService implements Handler{
     eventLogRepository: EventLogRepository
@@ -113,10 +113,10 @@ export class WebhookService implements Handler{
             if (event.eventTypeId == EVENT_TYPE.ScoopNotification){
                 const date = moment(event.eventTime);
                 event.payload.scoopNotificationConfig.data.interceptedAt = date.unix();
-                jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
+                jsons = Mustache.render(Mustache.escape(template), event.payload.scoopNotificationConfig.data);
             }else {
                 let parsedEvent = this.mh.parseEventForWebhook(event as Event);
-                jsons = Mustache.render(template, parsedEvent);
+                jsons = Mustache.render(Mustache.escape(template), parsedEvent);
             }
 
             let j = JSON.parse(jsons);

@@ -63,6 +63,8 @@
     "teamId": 1,
     "appId": 47,
     "envId": 2,
+    "clusterId": 1,
+    "isProdEnv": true,
     "cdWorkflowType": "POST",
     "cdWorkflowRunnerId": 212,
     "ciArtifactId": 167
