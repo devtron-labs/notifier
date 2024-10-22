@@ -52,7 +52,7 @@ export class SMTPService implements Handler {
         this.mh = mh
     }
 
-    handle(event: Event, templates: NotificationTemplates[], setting: NotificationSettings, configsMap: Map<string, boolean>, destinationMap: Map<string, boolean>): boolean {
+    async handle(event: Event, templates: NotificationTemplates[], setting: NotificationSettings, configsMap: Map<string, boolean>, destinationMap: Map<string, boolean>): Promise<boolean> {
         let sesTemplate: NotificationTemplates = templates.find(t => {
             return 'ses' == t.channel_type
         })
@@ -65,7 +65,7 @@ export class SMTPService implements Handler {
         this.smtpConfig = null
         for (const element of providersSet) {
             if (element['dest'] === "smtp") {
-                this.getDefaultConfig(providersSet, event, sesTemplate, setting, destinationMap, configsMap)
+                await this.getDefaultConfig(providersSet, event, sesTemplate, setting, destinationMap, configsMap)
                 break
             }
         }
@@ -83,7 +83,7 @@ export class SMTPService implements Handler {
                 from_email: config['from_email']
             }
             if(this.smtpConfig && this.smtpConfig.from_email){
-                providersSet.forEach(p => {
+                for (const p of providersSet) {
                     if (p['dest'] == "smtp") {
                         let userId = p['configId']
                         let recipient = p['recipient']
@@ -94,11 +94,11 @@ export class SMTPService implements Handler {
                             configKey = p['dest'] + '-' + userId
                         }
                         if (!configsMap.get(configKey)) {
-                            this.processNotification(userId, recipient, event, sesTemplate, setting, p, emailMap)
+                            await this.processNotification(userId, recipient, event, sesTemplate, setting, p, emailMap)
                             configsMap.set(configKey, true)
                         }
                     }
-                });
+                };
             }
         } catch (error) {
             this.logger.error('getDefaultConfig', error)
@@ -106,7 +106,7 @@ export class SMTPService implements Handler {
         }
     }
 
-    private preparePaylodAndSend(event: Event, smtpTemplate: NotificationTemplates, setting: NotificationSettings, p: string){
+    private async preparePayloadAndSend(event: Event, smtpTemplate: NotificationTemplates, setting: NotificationSettings, p: string){
         const smtpConfig = this.smtpConfig;
         // Create the email provider configuration
         let emailProviderConfig: any = {
@@ -143,48 +143,46 @@ export class SMTPService implements Handler {
 
         if (conditions) {
             engine.addRule({conditions: conditions, event: event});
-            engine.run(event).then(e => {
-                this.sendNotification(event, sdk, smtpTemplate.template_payload).then(result => {
-                    this.saveNotificationEventSuccessLog(result, event, p, setting);
-                }).catch((error) => {
-                    this.logger.error(error.message);
-                    this.saveNotificationEventFailureLog(event, p, setting);
-                });
-            })
-        } else {
-            this.sendNotification(event, sdk, smtpTemplate.template_payload).then(result => {
-                this.saveNotificationEventSuccessLog(result, event, p, setting);
-            }).catch((error) => {
+            await engine.run(event)
+            try {const result = await this.sendNotification(event, sdk, smtpTemplate.template_payload)
+                await this.saveNotificationEventSuccessLog(result, event, p, setting);}
+            catch(error: any) {
                 this.logger.error(error.message);
-                this.saveNotificationEventFailureLog(event, p, setting);
-            });
+                await this.saveNotificationEventFailureLog(event, p, setting);
+            };
+        } else {
+            try {const result = this.sendNotification(event, sdk, smtpTemplate.template_payload)
+                await this.saveNotificationEventSuccessLog(result, event, p, setting);}
+            catch(error: any)  {
+                this.logger.error(error.message);
+                await this.saveNotificationEventFailureLog(event, p, setting);
+            };
         }
     }
 
-    private processNotification(userId: number, recipient: string, event: Event, smtpTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
+    private async processNotification(userId: number, recipient: string, event: Event, smtpTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
         if(userId) {
-            this.usersRepository.findByUserId(userId).then(user => {
-                if (!user) {
-                    this.logger.info('no user found for id - ' + userId)
-                    this.logger.info(event.correlationId)
-                    return
-                }
-                this.sendEmailIfNotDuplicate(user['email_id'], event, smtpTemplate, setting, p, emailMap)
-            })
+            const user = await this.usersRepository.findByUserId(userId)
+            if (!user) {
+                this.logger.info('no user found for id - ' + userId)
+                this.logger.info(event.correlationId)
+                return
+            }
+            await this.sendEmailIfNotDuplicate(user['email_id'], event, smtpTemplate, setting, p, emailMap)
         }else{
             if (!recipient) {
                 this.logger.error('recipient is blank')
                 return
             }
-            this.sendEmailIfNotDuplicate(recipient, event, smtpTemplate, setting, p, emailMap)
+            await this.sendEmailIfNotDuplicate(recipient, event, smtpTemplate, setting, p, emailMap)
         }
     }
 
-    private sendEmailIfNotDuplicate(recipient : string, event: Event, smtpTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
+    private async sendEmailIfNotDuplicate(recipient : string, event: Event, smtpTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
         if (!emailMap.get(recipient)) {
             emailMap.set(recipient, true)
             event.payload['toEmail'] = recipient
-            this.preparePaylodAndSend(event, smtpTemplate, setting, p)
+            await this.preparePayloadAndSend(event, smtpTemplate, setting, p)
         } else {
             this.logger.info('duplicate email filtered out')
         }
@@ -220,17 +218,17 @@ export class SMTPService implements Handler {
         }
     }
 
-    private saveNotificationEventSuccessLog(result: any, event: Event, p: any, setting: NotificationSettings) {
+    private async saveNotificationEventSuccessLog(result: any, event: Event, p: any, setting: NotificationSettings) {
         if (result["status"] == "error") {
-            this.saveNotificationEventFailureLog(event, p, setting)
+            await this.saveNotificationEventFailureLog(event, p, setting)
         } else {
             let eventLog = this.eventLogBuilder.buildEventLog(event, p.dest, true, setting);
-            this.eventLogRepository.saveEventLog(eventLog);
+            await this.eventLogRepository.saveEventLog(eventLog);
         }
     }
 
-    private saveNotificationEventFailureLog(event: Event, p: any, setting: NotificationSettings) {
+    private async saveNotificationEventFailureLog(event: Event, p: any, setting: NotificationSettings) {
         let eventLog = this.eventLogBuilder.buildEventLog(event, p.dest, false, setting);
-        this.eventLogRepository.saveEventLog(eventLog);
+        await this.eventLogRepository.saveEventLog(eventLog);
     }
 }

@@ -44,7 +44,7 @@ export class SlackService implements Handler {
         this.mh = mh;
     }
 
-    handle(event: Event, templates: NotificationTemplates[], setting: NotificationSettings, configsMap: Map<string, boolean>, destinationMap: Map<string, boolean>): boolean {
+    async handle(event: Event, templates: NotificationTemplates[], setting: NotificationSettings, configsMap: Map<string, boolean>, destinationMap: Map<string, boolean>): Promise<boolean> {
 
         let slackTemplate: NotificationTemplates = templates.find(t => {
             return 'slack' == t.channel_type
@@ -57,21 +57,21 @@ export class SlackService implements Handler {
         const providerObjects = setting.config
         const providersSet = new Set(providerObjects);
 
-        providersSet.forEach(p => {
+        for (const p of providersSet) {
             if (p['dest'] == "slack") {
                 let slackConfigId = p['configId']
                 let configKey = p['dest'] + '-' + slackConfigId
                 if (!configsMap.get(configKey)) {
-                    this.processNotification(slackConfigId, event, slackTemplate, setting, p, destinationMap)
+                    await this.processNotification(slackConfigId, event, slackTemplate, setting, p, destinationMap)
                     configsMap.set(configKey, true)
                 }
             }
-        });
+        }
         return true
     }
 
-    private processNotification(slackConfigId: number, event: Event, slackTemplate: NotificationTemplates, setting: NotificationSettings, p: string, webhookMap: Map<string, boolean>) {
-        this.slackConfigRepository.findBySlackConfigId(slackConfigId).then(config => {
+    private async processNotification(slackConfigId: number, event: Event, slackTemplate: NotificationTemplates, setting: NotificationSettings, p: string, webhookMap: Map<string, boolean>) {
+            const config = await this.slackConfigRepository.findBySlackConfigId(slackConfigId)
             if (!config) {
                 this.logger.info('no slack config found for event')
                 this.logger.info(event.correlationId)
@@ -100,27 +100,30 @@ export class SlackService implements Handler {
             let conditions: string = p['rule']['conditions'];
             if (conditions) {
                 engine.addRule({conditions: conditions, event: event});
-                engine.run(event).then(e => {
-                    this.sendNotification(event, sdk, slackTemplate.template_payload).then(result => {
-                        this.saveNotificationEventSuccessLog(result, event, p, setting);
-                    }).catch((error) => {
-                        this.logger.error(error.message);
-                        this.saveNotificationEventFailureLog(event, p, setting);
-                    });
-                })
+                try {
+                    const result = await this.sendNotification(event, sdk, slackTemplate.template_payload);
+                    await this.saveNotificationEventSuccessLog(result, event, p, setting);
+                } catch (error: any) {
+                    this.logger.error(error.message);
+                    await this.saveNotificationEventFailureLog(event, p, setting);
+                }
+                await engine.run(event)
+                    const result = await this.sendNotification(event, sdk, slackTemplate.template_payload)
+                    await this.saveNotificationEventSuccessLog(result, event, p, setting);
+                
             } else {
-                this.sendAndLogNotification(event, sdk, setting, p, slackTemplate);
+                await this.sendAndLogNotification(event, sdk, setting, p, slackTemplate);
             }
-        })
     }
 
-    public sendAndLogNotification(event: Event, sdk: NotifmeSdk, setting: NotificationSettings, p: any, slackTemplate: NotificationTemplates){
-        this.sendNotification(event, sdk, slackTemplate.template_payload).then(result => {
-            this.saveNotificationEventSuccessLog(result, event, p, setting);
-        }).catch((error) => {
+    public async sendAndLogNotification(event: Event, sdk: NotifmeSdk, setting: NotificationSettings, p: any, slackTemplate: NotificationTemplates){
+        try {
+            const result = await this.sendNotification(event, sdk, slackTemplate.template_payload)
+            await this.saveNotificationEventSuccessLog(result, event, p, setting);
+        } catch(error: any) {
             this.logger.error(error.message);
             this.saveNotificationEventFailureLog(event, p, setting);
-        });
+        };
     }
 
     public async sendNotification(event: Event, sdk: NotifmeSdk, template: string) {
@@ -149,17 +152,17 @@ export class SlackService implements Handler {
         }
     }
 
-    private saveNotificationEventSuccessLog(result: any, event: Event, p: any, setting: NotificationSettings) {
+    private async saveNotificationEventSuccessLog(result: any, event: Event, p: any, setting: NotificationSettings) {
         if (result["status"] == "error") {
-            this.saveNotificationEventFailureLog(event, p, setting)
+            await this.saveNotificationEventFailureLog(event, p, setting)
         } else {
             let eventLog = this.eventLogBuilder.buildEventLog(event, p.dest, true, setting);
-            this.eventLogRepository.saveEventLog(eventLog);
+            await this.eventLogRepository.saveEventLog(eventLog);
         }
     }
 
-    private saveNotificationEventFailureLog(event: Event, p: any, setting: NotificationSettings) {
+    private async saveNotificationEventFailureLog(event: Event, p: any, setting: NotificationSettings) {
         let eventLog = this.eventLogBuilder.buildEventLog(event, p.dest, false, setting);
-        this.eventLogRepository.saveEventLog(eventLog);
+        await this.eventLogRepository.saveEventLog(eventLog);
     }
 }

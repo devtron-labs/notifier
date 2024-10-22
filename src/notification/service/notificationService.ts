@@ -29,7 +29,7 @@ import {NotifmeSdk} from 'notifme-sdk'
 import {CustomError, CustomResponse} from "../../entities/events";
 
 export interface Handler {
-    handle(event: Event, templates: (NotificationTemplates[] | WebhookConfig[]), setting: NotificationSettings, configMap: Map<string, boolean>, destinationMap: Map<string, boolean>): boolean
+    handle(event: Event, templates: (NotificationTemplates[] | WebhookConfig[]), setting: NotificationSettings, configMap: Map<string, boolean>, destinationMap: Map<string, boolean>): Promise<boolean>
 
     sendNotification(event: Event, sdk: any, template: string)
 }
@@ -48,7 +48,7 @@ class NotificationService {
         this.templatesRepository = templatesRepository
         this.logger = logger
     }
-    public sendApprovalNotificaton(event:Event){
+    public async sendApprovalNotification(event:Event){
         try {
             if (!this.isValidEventForApproval(event)) {
                 throw new CustomError("Event is not valid for approval ", 400)
@@ -70,7 +70,7 @@ class NotificationService {
             });
 
 
-            this.templatesRepository.findByEventTypeId(event.eventTypeId).then((templateResults: NotificationTemplates[]) => {
+            try {const templateResults: NotificationTemplates[] = await this.templatesRepository.findByEventTypeId(event.eventTypeId)
                 if (!templateResults) {
                     this.logger.info("no templates found for event ", event);
                     throw new CustomError("no templates found for event", 404)
@@ -81,33 +81,33 @@ class NotificationService {
                 settings.event_type_id = event.eventTypeId
                 for (let h of this.handlers) {
                     if ((h instanceof SESService) || (h instanceof SMTPService)) {
-                        h.handle(event, templateResults, settings, configsMap, destinationMap)
+                        await h.handle(event, templateResults, settings, configsMap, destinationMap)
                     }
-                }
-            }).catch(err => this.logger.error("err" + err))
+                }}
+            catch(err) {this.logger.error("err" + err)}
         }catch (e:any){
             throw e instanceof CustomError?e:new CustomError(e.message,400)
         }
     }
 
     // this function is used to send webhook notification for scoop notification event type
-    private sendWebhookNotification(event: Event) {
-        this.handlers.forEach((h) => {
+    private async sendWebhookNotification(event: Event) {
+        for (const h of this.handlers) {
             if (h instanceof WebhookService){
                 let setting = new NotificationSettings()
                 setting.event_type_id = event.eventTypeId
                 setting.pipeline_id = 0
                 setting.config = event.payload
-                h.sendAndLogNotification(event, event.payload.scoopNotificationConfig.webhookConfig as WebhookConfig, setting, {"dest": "webhook"})
+                await h.sendAndLogNotification(event, event.payload.scoopNotificationConfig.webhookConfig as WebhookConfig, setting, {"dest": "webhook"})
             }
-        })
+        }
     }
 
     // this function is used to send slack notification for scoop notification event type
-    private sendSlackNotification(event: Event) {
-        this.handlers.forEach((h) => {
+    private async sendSlackNotification(event: Event) {
+        for (const h of this.handlers) {
             if (h instanceof SlackService){
-                this.templatesRepository.findByEventTypeIdAndChannelType(event.eventTypeId, "slack").then((templateResults:NotificationTemplates[]) => {
+                const templateResults: NotificationTemplates[] = await this.templatesRepository.findByEventTypeIdAndChannelType(event.eventTypeId, "slack")
                     if (!templateResults) {
                         this.logger.info("no templates found for event ", event);
                         return
@@ -129,28 +129,27 @@ class NotificationService {
                     setting.event_type_id = event.eventTypeId
                     setting.pipeline_id = 0
                     setting.config = event.payload
-                    h.sendAndLogNotification(event, sdk,setting,{"dest": "slack"}, slackTemplateConfig)
-                })
+                    await h.sendAndLogNotification(event, sdk,setting,{"dest": "slack"}, slackTemplateConfig)
+                }
             }
-        })
-    }
+        }
 
     public async sendNotification(event: Event):Promise<CustomResponse> {
         try {
             if (event.payload.providers && event.payload.providers.length > 0) {
-                this.sendApprovalNotificaton(event)
+                await this.sendApprovalNotification(event)
                 return new CustomResponse("notification sent",200)
             }
 
             // check webhook for scoop notification event type
             if (event.eventTypeId == EVENT_TYPE.ScoopNotification && event.payload.scoopNotificationConfig.webhookConfig) {
-                this.sendWebhookNotification(event)
+                await this.sendWebhookNotification(event)
                 return new CustomResponse("notification sent",200)
             }
 
             // check slack for scoop notification event type
             if (event.eventTypeId == EVENT_TYPE.ScoopNotification && event.payload.scoopNotificationConfig.slackConfig) {
-                this.sendSlackNotification(event)
+                await this.sendSlackNotification(event)
                 return new CustomResponse("notification sent",200)
             }
 
@@ -178,7 +177,7 @@ class NotificationService {
                     });
                 });
 
-                settingsResults.forEach((setting) => {
+                for (const setting of settingsResults) {
 
                     const configArray = setting.config as any;
                     if (Array.isArray(configArray)) {
@@ -186,8 +185,8 @@ class NotificationService {
 
                         if (webhookConfig.length) {
                             const webhookConfigRepository = new WebhookConfigRepository();
-                            webhookConfig.forEach(config => {
-                                webhookConfigRepository.getAllWebhookConfigs().then((templateResults: WebhookConfig[]) => {
+                            for (const config of webhookConfig) {
+                                const templateResults: WebhookConfig[] = await webhookConfigRepository.getAllWebhookConfigs()
                                     const newTemplateResult = templateResults.filter((t) => t.id === config.configId);
 
                                     if (newTemplateResult.length === 0) {
@@ -202,27 +201,25 @@ class NotificationService {
                                     for (const h of this.handlers) {
                                         if (h instanceof WebhookService) {
                                             if (event.eventTypeId === EVENT_TYPE.ImageScan && !!event.payload.imageScanExecutionInfo) {
-                                                h.handle(ImageScanEvent, newTemplateResult, setting, configsMap, destinationMap);
+                                                await h.handle(ImageScanEvent, newTemplateResult, setting, configsMap, destinationMap);
                                             }
-                                            h.handle(event, newTemplateResult, setting, configsMap, destinationMap);
+                                            await h.handle(event, newTemplateResult, setting, configsMap, destinationMap);
                                         }
                                     }
-                                });
-                            });
-                        }
+                                };
+                            };
                         if (configArray.length > webhookConfig.length) {
-                            this.templatesRepository.findByEventTypeIdAndNodeType(event.eventTypeId, event.pipelineType).then((templateResults: NotificationTemplates[]) => {
+                            const templateResults: NotificationTemplates[] = await this.templatesRepository.findByEventTypeIdAndNodeType(event.eventTypeId, event.pipelineType)
                                 if (!templateResults) {
                                     this.logger.info("no templates found for event ", event);
                                     return new CustomResponse("",0,new CustomError("no templates found for event", 404));
                                 }
                                 for (let h of this.handlers) {
-                                    h.handle(event, templateResults, setting, configsMap, destinationMap)
+                                    await h.handle(event, templateResults, setting, configsMap, destinationMap)
                                 }
-                            })
-                        }
+                            }
                     }
-                });
+                };
             this.logger.info("notification sent");
             return  new CustomResponse("notification sent",200)
         }catch (error:any){
