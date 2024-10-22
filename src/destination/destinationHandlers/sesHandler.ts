@@ -182,13 +182,13 @@ export class SESService implements Handler {
             if(event.eventTypeId===4 || event.eventTypeId === EVENT_TYPE.ImagePromotion){
                 let commentDisplayStyle = (event.payload.imageComment === "") ? 'none' : 'inline';
                 let tagDisplayStyle = (event.payload.imageTagNames === null) ? 'none' : 'inline';
-                json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle ,tagDisplayStyle});
+                json = Mustache.render(Mustache.escape(template), { ...parsedEvent, commentDisplayStyle ,tagDisplayStyle});
             }else if(event.eventTypeId===5){
                 let commentDisplayStyle = (event.payload.protectConfigComment === "") ? 'none' : 'inline';
-                json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle });
+                json = Mustache.render(Mustache.escape(template), { ...parsedEvent, commentDisplayStyle });
             }
             else{
-                json = Mustache.render(template, parsedEvent)
+                json = Mustache.render(Mustache.escape(template), parsedEvent)
             }
 
             const res = await sdk.send(
