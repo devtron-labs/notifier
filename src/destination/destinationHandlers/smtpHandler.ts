@@ -143,15 +143,17 @@ export class SMTPService implements Handler {
 
         if (conditions) {
             engine.addRule({conditions: conditions, event: event});
-            await engine.run(event)
-            try {const result = await this.sendNotification(event, sdk, smtpTemplate.template_payload)
+            try {
+                await engine.run(event)
+                const result = await this.sendNotification(event, sdk, smtpTemplate.template_payload)
                 await this.saveNotificationEventSuccessLog(result, event, p, setting);}
             catch(error: any) {
                 this.logger.error(error.message);
                 await this.saveNotificationEventFailureLog(event, p, setting);
             };
         } else {
-            try {const result = this.sendNotification(event, sdk, smtpTemplate.template_payload)
+            try {
+                const result = this.sendNotification(event, sdk, smtpTemplate.template_payload)
                 await this.saveNotificationEventSuccessLog(result, event, p, setting);}
             catch(error: any)  {
                 this.logger.error(error.message);

@@ -9,7 +9,6 @@ import {
     NatsStreamWiseConfigMapping,
     NatsTopic,
     NatsTopicMapping, numberOfRetries,
-
 } from "./utils";
 import {ConsumerOptsBuilderImpl} from "nats/lib/nats-base-client/jsconsumeropts";
 import {ConsumerInfo, JetStreamManager, StreamConfig} from "nats/lib/nats-base-client/types";

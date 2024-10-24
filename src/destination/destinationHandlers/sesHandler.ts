@@ -125,23 +125,41 @@ export class SESService implements Handler {
         // let options = { allowUndefinedFacts: true }
         let conditions: string = p['rule']['conditions'];
         if (conditions) {
-            engine.addRule({conditions: conditions, event: event});
-            await engine.run(event)
-            try {
-                const result = await this.sendNotification(event, sdk, sesTemplate.template_payload)
-                await this.saveNotificationEventSuccessLog(result, event, p, setting);
-            } catch (error: any) {
-                this.logger.error(error.message);
-                await this.saveNotificationEventFailureLog(event, p, setting);
-            }
+          engine.addRule({ conditions: conditions, event: event });
+          try {
+            await engine.run(event);
+            const result = await this.sendNotification(
+              event,
+              sdk,
+              sesTemplate.template_payload
+            );
+            await this.saveNotificationEventSuccessLog(
+              result,
+              event,
+              p,
+              setting
+            );
+          } catch (error: any) {
+            this.logger.error(error.message);
+            await this.saveNotificationEventFailureLog(event, p, setting);
+          }
         } else {
-            try {
-            const result = await this.sendNotification(event, sdk, sesTemplate.template_payload)
-            await this.saveNotificationEventSuccessLog(result, event, p, setting);
-            } catch(error: any) {
-                this.logger.error(error.message);
-                await this.saveNotificationEventFailureLog(event, p, setting);
-            };
+          try {
+            const result = await this.sendNotification(
+              event,
+              sdk,
+              sesTemplate.template_payload
+            );
+            await this.saveNotificationEventSuccessLog(
+              result,
+              event,
+              p,
+              setting
+            );
+          } catch (error: any) {
+            this.logger.error(error.message);
+            await this.saveNotificationEventFailureLog(event, p, setting);
+          }
         }
     }
 

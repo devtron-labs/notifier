@@ -97,22 +97,34 @@ export class SlackService implements Handler {
             });
             let engine = new Engine();
             // let options = { allowUndefinedFacts: true }
-            let conditions: string = p['rule']['conditions'];
+            let conditions: string = p["rule"]["conditions"];
             if (conditions) {
-                engine.addRule({conditions: conditions, event: event});
-                try {
-                    const result = await this.sendNotification(event, sdk, slackTemplate.template_payload);
-                    await this.saveNotificationEventSuccessLog(result, event, p, setting);
-                } catch (error: any) {
-                    this.logger.error(error.message);
-                    await this.saveNotificationEventFailureLog(event, p, setting);
-                }
-                await engine.run(event)
-                    const result = await this.sendNotification(event, sdk, slackTemplate.template_payload)
-                    await this.saveNotificationEventSuccessLog(result, event, p, setting);
-                
+              engine.addRule({ conditions: conditions, event: event });
+              try {
+                await engine.run(event);
+                const result = await this.sendNotification(
+                  event,
+                  sdk,
+                  slackTemplate.template_payload
+                );
+                await this.saveNotificationEventSuccessLog(
+                  result,
+                  event,
+                  p,
+                  setting
+                );
+              } catch (error: any) {
+                this.logger.error(error.message);
+                await this.saveNotificationEventFailureLog(event, p, setting);
+              }
             } else {
-                await this.sendAndLogNotification(event, sdk, setting, p, slackTemplate);
+              await this.sendAndLogNotification(
+                event,
+                sdk,
+                setting,
+                p,
+                slackTemplate
+              );
             }
     }
 

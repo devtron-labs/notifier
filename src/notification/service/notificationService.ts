@@ -70,7 +70,8 @@ class NotificationService {
             });
 
 
-            try {const templateResults: NotificationTemplates[] = await this.templatesRepository.findByEventTypeId(event.eventTypeId)
+            try {
+                const templateResults: NotificationTemplates[] = await this.templatesRepository.findByEventTypeId(event.eventTypeId)
                 if (!templateResults) {
                     this.logger.info("no templates found for event ", event);
                     throw new CustomError("no templates found for event", 404)
@@ -84,8 +85,10 @@ class NotificationService {
                         await h.handle(event, templateResults, settings, configsMap, destinationMap)
                     }
                 }}
-            catch(err) {this.logger.error("err" + err)}
-        }catch (e:any){
+            catch(err) {
+                this.logger.error("err" + err)
+            }
+        } catch(e:any) {
             throw e instanceof CustomError?e:new CustomError(e.message,400)
         }
     }
