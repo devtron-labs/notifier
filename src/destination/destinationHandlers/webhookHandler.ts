@@ -41,7 +41,7 @@ export class WebhookService implements Handler{
         this.logger = logger
         this.mh = mh;
     }
-    handle(event: Event, templates: WebhookConfig[], setting: NotificationSettings, configsMap: Map<string, boolean>, destinationMap: Map<string, boolean>): boolean{
+    async handle(event: Event, templates: WebhookConfig[], setting: NotificationSettings, configsMap: Map<string, boolean>, destinationMap: Map<string, boolean>): Promise<boolean>{
         let  webhookTemplate: WebhookConfig  = templates.find(t => {
             return t
         })
@@ -52,32 +52,34 @@ export class WebhookService implements Handler{
         const providerObjects = setting.config
         const providersSet = new Set(providerObjects);
 
-        providersSet.forEach(p => {
+        for (const p of providersSet) {
             if (p['dest'] == "webhook" && p['configId']==webhookTemplate.id) {
                 let webhookConfigId = p['configId']
                 let configKey = p['dest'] + '-' + webhookConfigId
                 if (!configsMap.get(configKey)) {
-                    this.processNotification(webhookConfigId, event, webhookTemplate, setting, p, destinationMap)
+                    await this.processNotification(webhookConfigId, event, webhookTemplate, setting, p, destinationMap)
                     configsMap.set(configKey, true)
                 }
             }
-        });
+        };
         return true
 
     }
 
-    public sendAndLogNotification(event: Event, webhookTemplate: WebhookConfig, setting: NotificationSettings, p: any) {
+    public async sendAndLogNotification(event: Event, webhookTemplate: WebhookConfig, setting: NotificationSettings, p: any) {
         const payload=typeof webhookTemplate.payload==="object"?JSON.stringify(webhookTemplate.payload) : webhookTemplate.payload;
-        this.sendNotification(event, webhookTemplate.web_hook_url, payload,webhookTemplate.header).then(result => {
-            this.saveNotificationEventSuccessLog(result, event, p, setting);
-        }).catch((error) => {
+
+        try {
+            const result = await this.sendNotification(event, webhookTemplate.web_hook_url, payload,webhookTemplate.header)
+            await this.saveNotificationEventSuccessLog(result, event, p, setting);
+        } catch (error: any) {
             this.logger.error(error.message);
-            this.saveNotificationEventFailureLog(event, p, setting);
-        });
+            await this.saveNotificationEventFailureLog(event, p, setting);
+        }
     }
 
-    private processNotification(webhookConfigId: number, event: Event, webhookTemplate: WebhookConfig, setting: NotificationSettings, p: string, webhookMap: Map<string, boolean>) {
-        this.webhookConfigRepository.findByWebhookConfigId(webhookConfigId).then(config => {
+    private async processNotification(webhookConfigId: number, event: Event, webhookTemplate: WebhookConfig, setting: NotificationSettings, p: string, webhookMap: Map<string, boolean>) {
+        this.webhookConfigRepository.findByWebhookConfigId(webhookConfigId).then(async (config) => {
             if (!config) {
                 this.logger.info('no webhook config found for event')
                 this.logger.info(event.correlationId)
@@ -94,11 +96,10 @@ export class WebhookService implements Handler{
             let conditions: string = p['rule']['conditions'];
             if (conditions) {
                 engine.addRule({conditions: conditions, event: event});
-                engine.run(event).then(e => {
-                    this.sendAndLogNotification(event, webhookTemplate, setting, p);
-                })
+                await engine.run(event)
+                await this.sendAndLogNotification(event, webhookTemplate, setting, p);
             } else {
-                this.sendAndLogNotification(event, webhookTemplate, setting, p);
+                await this.sendAndLogNotification(event, webhookTemplate, setting, p);
             }
         })
     }
@@ -134,19 +135,18 @@ export class WebhookService implements Handler{
         }
       }
 
-    private saveNotificationEventSuccessLog(result: any, event: Event, p: any, setting: NotificationSettings) {
-        
+    private async saveNotificationEventSuccessLog(result: any, event: Event, p: any, setting: NotificationSettings) {    
             if (!result || result["status"] == "error") {
-                this.saveNotificationEventFailureLog(event, p, setting)
+                await this.saveNotificationEventFailureLog(event, p, setting)
             } else {
                 let eventLog = this.eventLogBuilder.buildEventLog(event, p.dest, true, setting);
-                this.eventLogRepository.saveEventLog(eventLog);
+                await this.eventLogRepository.saveEventLog(eventLog);
             }  
     }
 
-    private saveNotificationEventFailureLog(event: Event, p: any, setting: NotificationSettings) {
+    private async saveNotificationEventFailureLog(event: Event, p: any, setting: NotificationSettings) {
         let eventLog = this.eventLogBuilder.buildEventLog(event, p.dest, false, setting);
-        this.eventLogRepository.saveEventLog(eventLog);
+        await this.eventLogRepository.saveEventLog(eventLog);
     }
 
 }

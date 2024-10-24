@@ -9,19 +9,17 @@ import {
     NatsStreamWiseConfigMapping,
     NatsTopic,
     NatsTopicMapping, numberOfRetries,
-
 } from "./utils";
 import {ConsumerOptsBuilderImpl} from "nats/lib/nats-base-client/jsconsumeropts";
-
-import {ConsumerInfo, ConsumerUpdateConfig, JetStreamManager, StreamConfig} from "nats/lib/nats-base-client/types";
+import {ConsumerInfo, JetStreamManager, StreamConfig} from "nats/lib/nats-base-client/types";
+import { natsHistogram } from "../common/metrics";
 
 const consumerNotFoundErrorCode = 10014;
 const streamNotFoundErrorCode = 10059;
 
 export interface PubSubService {
-    Subscribe(topic: string, callback: (msg: string) => void): void
+    Subscribe(topic: string, callback: (msg: string) => Promise<void>): void
 }
-
 
 export class PubSubServiceImpl implements PubSubService {
     private nc: NatsConnection
@@ -39,7 +37,7 @@ export class PubSubServiceImpl implements PubSubService {
 
     // ********** Subscribe function provided by consumer
 
-    async Subscribe(topic: string, callback: (msg: string) => void) {
+    async Subscribe(topic: string, callback: (msg: string) => Promise<void>) {
         const natsTopicConfig: NatsTopic = NatsTopicMapping.get(topic)
         const streamName = natsTopicConfig.streamName
         const consumerName = natsTopicConfig.consumerName
@@ -58,10 +56,12 @@ export class PubSubServiceImpl implements PubSubService {
             ack_policy:AckPolicy.Explicit,
             deliver_policy:DeliverPolicy.Last,
             max_ack_pending:1,
-        }).bindStream(streamName).callback((err, msg) => {
+        }).bindStream(streamName).callback(async (err, msg) => {
+            const timer = natsHistogram.startTimer()
             try {
                 const msgString = getJsonString(msg.data)
-                callback(msgString)
+                await callback(msgString)
+                timer({streamName, consumerName})
             } catch (err) {
                 this.logger.error("msg: "+msg.data+" err: "+err);
             }
