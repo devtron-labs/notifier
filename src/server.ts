@@ -137,24 +137,26 @@ const natsEventHandler = async (msg: string) => {
     }
 }
 
-app.get('/', (req, res) => {
+// Request counter for all endpoints
+app.use((req, res, next) => {
     httpRequestMetricsCounter.labels({method: req.method, endpoint: req.url, statusCode: res.statusCode}).inc()
+    next()
+  })
+
+app.get('/', (req, res) => {
     res.send('Welcome to notifier Notifier!')
 })
 
 app.get('/health', (req, res) => {
-    httpRequestMetricsCounter.labels({method: req.method, endpoint: req.url, statusCode: res.statusCode}).inc()
     res.status(200).send("healthy")
 })
 
 app.get('/test', (req, res) => {
-    httpRequestMetricsCounter.labels({method: req.method, endpoint: req.url, statusCode: res.statusCode}).inc()
     send();
     res.send('Test!');
 })
 
 app.post('/notify', async(req, res) => {
-    httpRequestMetricsCounter.labels({method: req.method, endpoint: req.url, statusCode: res.statusCode}).inc()
     logger.info("notifications Received")
     const response=await notificationService.sendNotification(req.body);
     if (response.status!=0){

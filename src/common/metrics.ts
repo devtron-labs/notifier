@@ -1,23 +1,23 @@
 import { Counter, Histogram, register } from "prom-client"
 
 export const successNotificationMetricsCounter = new Counter({
-    name: 'successful_notifications',
+    name: 'successfulNotifications',
     help: 'Number of successful notifications',
 })
 
 export const failedNotificationMetricsCounter = new Counter({
-    name: 'failed_notifications',
+    name: 'failedNotifications',
     help: 'Number of failed notifications',
 })
 
 export const httpRequestMetricsCounter = new Counter({
-    name: 'http_requests_counter',
+    name: 'httpRequestsCounter',
     help: 'Number of requests on http endpoints',
     labelNames: ['method', 'endpoint', 'statusCode']
 })
 
 export const natsHistogram = new Histogram({
-    name: 'nats_consumer_histogram',
+    name: 'natsConsumerHistogram',
     help: 'nats consumer duration histogram',
     labelNames: ['streamName', 'consumerName']
 })
