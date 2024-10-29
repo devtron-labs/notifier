@@ -159,7 +159,7 @@ class NotificationService {
                 throw new CustomError("Event is not valid", 400)
             }
 
-            const settingsResults=await this.notificationSettingsRepository.findByEventSource(event.pipelineType, event.pipelineId, event.eventTypeId, event.appId, event.envId, event.teamId, event.clusterId, event.isProdEnv);
+            const settingsResults=await this.notificationSettingsRepository.findByEventSource(event.pipelineType, event.pipelineId, event.eventTypeId, event.appId, event.envId, event.teamId, event.clusterId, event.isProdEnv,event.envIdsForCiPipeline);
                 this.logger.info('notificationSettingsRepository.findByEventSource')
                 if (!settingsResults || settingsResults.length == 0) {
                     this.logger.info("no notification settings found for event " + event.correlationId);
@@ -256,5 +256,6 @@ class Event {
     clusterId: number
     isProdEnv: boolean
     baseUrl?: string
+    envIdsForCiPipeline?: number[]
 }
 export {NotificationService, Event}
