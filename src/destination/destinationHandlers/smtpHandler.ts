@@ -199,12 +199,12 @@ export class SMTPService implements Handler {
             if(event.eventTypeId===4){
                 let commentDisplayStyle = (event.payload.imageComment === "") ? 'none' : 'inline';
                 let tagDisplayStyle = (event.payload.imageTagNames === null) ? 'none' : 'inline';
-                json = Mustache.render(Mustache.escape(template), { ...parsedEvent, commentDisplayStyle ,tagDisplayStyle});
+                json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle ,tagDisplayStyle});
             }else if(event.eventTypeId===5){
                 let commentDisplayStyle = (event.payload.protectConfigComment === "") ? 'none' : 'inline';
-                json = Mustache.render(Mustache.escape(template), { ...parsedEvent, commentDisplayStyle });
+                json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle });
             }else{
-                json = Mustache.render(Mustache.escape(template), parsedEvent)
+                json = Mustache.render(template, parsedEvent)
             }
             const res = await sdk.send(
                 {
