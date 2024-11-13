@@ -129,6 +129,7 @@ createConnection(dbOptions).then(async connection => {
 const natsEventHandler = async (msg: string) => {
     const eventAsString = JSON.parse(msg)
     const event = JSON.parse(eventAsString) as Event
+    logger.info({natsEventBody: event})
     const response = await notificationService.sendNotification(event)
     if (response.status != 0){
         successNotificationMetricsCounter.inc()
@@ -158,6 +159,7 @@ app.get('/test', (req, res) => {
 
 app.post('/notify', async(req, res) => {
     logger.info("notifications Received")
+    logger.info({payload: req.body})
     const response=await notificationService.sendNotification(req.body);
     if (response.status!=0){
         res.status(response.status).json({message:response.message}).send()
