@@ -138,6 +138,8 @@ class NotificationService {
         }
 
     public async sendNotification(event: Event):Promise<CustomResponse> {
+      this.logger.info("Notification Payload:",JSON.stringify(event))
+
         try {
             if (event.payload.providers && event.payload.providers.length > 0) {
                 await this.sendApprovalNotification(event)
