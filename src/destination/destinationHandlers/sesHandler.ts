@@ -52,7 +52,7 @@ export class SESService implements Handler {
         this.mh = mh
     }
 
-    handle(event: Event, templates: NotificationTemplates[], setting: NotificationSettings, configsMap: Map<string, boolean>, destinationMap: Map<string, boolean>): boolean {
+    async handle(event: Event, templates: NotificationTemplates[], setting: NotificationSettings, configsMap: Map<string, boolean>, destinationMap: Map<string, boolean>): Promise<boolean> {
         let sesTemplate: NotificationTemplates = templates.find(t => {
             return 'ses' == t.channel_type
         })
@@ -65,7 +65,7 @@ export class SESService implements Handler {
         this.sesConfig = null
         for (const element of providersSet) {
             if (element['dest'] === "ses") {
-                this.getDefaultConfig(providersSet, event, sesTemplate, setting, destinationMap, configsMap)
+                await this.getDefaultConfig(providersSet, event, sesTemplate, setting, destinationMap, configsMap)
                 break
             }
         }
@@ -82,7 +82,7 @@ export class SESService implements Handler {
                 from_email: config['from_email']
             }
             if(this.sesConfig && this.sesConfig.from_email){
-                providersSet.forEach(p => {
+                for (const p of providersSet) {
                     if (p['dest'] == "ses") {
                         let userId = p['configId']
                         let recipient = p['recipient']
@@ -93,11 +93,11 @@ export class SESService implements Handler {
                             configKey = p['dest'] + '-' + userId
                         }
                         if (!configsMap.get(configKey)) {
-                            this.processNotification(userId, recipient, event, sesTemplate, setting, p, emailMap)
+                            await this.processNotification(userId, recipient, event, sesTemplate, setting, p, emailMap)
                             configsMap.set(configKey, true)
                         }
                     }
-                });
+                };
             }
         } catch (error) {
             this.logger.error('getDefaultConfig', error)
@@ -105,7 +105,7 @@ export class SESService implements Handler {
         }
     }
 
-    private preparePaylodAndSend(event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, p: string){
+    private async preparePayloadAndSend(event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, p: string){
         let sdk: NotifmeSdk = new NotifmeSdk({
             channels: {
                 email: {
@@ -125,49 +125,67 @@ export class SESService implements Handler {
         // let options = { allowUndefinedFacts: true }
         let conditions: string = p['rule']['conditions'];
         if (conditions) {
-            engine.addRule({conditions: conditions, event: event});
-            engine.run(event).then(e => {
-                this.sendNotification(event, sdk, sesTemplate.template_payload).then(result => {
-                    this.saveNotificationEventSuccessLog(result, event, p, setting);
-                }).catch((error) => {
-                    this.logger.error(error.message);
-                    this.saveNotificationEventFailureLog(event, p, setting);
-                });
-            })
+          engine.addRule({ conditions: conditions, event: event });
+          try {
+            await engine.run(event);
+            const result = await this.sendNotification(
+              event,
+              sdk,
+              sesTemplate.template_payload
+            );
+            await this.saveNotificationEventSuccessLog(
+              result,
+              event,
+              p,
+              setting
+            );
+          } catch (error: any) {
+            this.logger.error(error.message);
+            await this.saveNotificationEventFailureLog(event, p, setting);
+          }
         } else {
-            this.sendNotification(event, sdk, sesTemplate.template_payload).then(result => {
-                this.saveNotificationEventSuccessLog(result, event, p, setting);
-            }).catch((error) => {
-                this.logger.error(error.message);
-                this.saveNotificationEventFailureLog(event, p, setting);
-            });
+          try {
+            const result = await this.sendNotification(
+              event,
+              sdk,
+              sesTemplate.template_payload
+            );
+            await this.saveNotificationEventSuccessLog(
+              result,
+              event,
+              p,
+              setting
+            );
+          } catch (error: any) {
+            this.logger.error(error.message);
+            await this.saveNotificationEventFailureLog(event, p, setting);
+          }
         }
     }
 
-    private processNotification(userId: number, recipient: string, event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
+    private async processNotification(userId: number, recipient: string, event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
         if(userId) {
-            this.usersRepository.findByUserId(userId).then(user => {
-                if (!user) {
-                    this.logger.info('no user found for id - ' + userId)
-                    this.logger.info(event.correlationId)
-                    return
-                }
-                this.sendEmailIfNotDuplicate(user['email_id'], event, sesTemplate, setting, p, emailMap)
-            })
+            const user = await this.usersRepository.findByUserId(userId)
+            if (!user) {
+                this.logger.info('no user found for id - ' + userId)
+                this.logger.info(event.correlationId)
+                return
+            }
+            await this.sendEmailIfNotDuplicate(user['email_id'], event, sesTemplate, setting, p, emailMap)
         }else{
             if (!recipient) {
                 this.logger.error('recipient is blank')
                 return
             }
-            this.sendEmailIfNotDuplicate(recipient, event, sesTemplate, setting, p, emailMap)
+            await this.sendEmailIfNotDuplicate(recipient, event, sesTemplate, setting, p, emailMap)
         }
     }
 
-    private sendEmailIfNotDuplicate(recipient : string, event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
+    private async sendEmailIfNotDuplicate(recipient : string, event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
         if (!emailMap.get(recipient)) {
             emailMap.set(recipient, true)
             event.payload['toEmail'] = recipient
-            this.preparePaylodAndSend(event, sesTemplate, setting, p)
+            await this.preparePayloadAndSend(event, sesTemplate, setting, p)
         } else {
             this.logger.info('duplicate email filtered out')
         }
@@ -205,17 +223,17 @@ export class SESService implements Handler {
         }
     }
 
-    private saveNotificationEventSuccessLog(result: any, event: Event, p: any, setting: NotificationSettings) {
+    private async saveNotificationEventSuccessLog(result: any, event: Event, p: any, setting: NotificationSettings) {
         if (result["status"] == "error") {
-            this.saveNotificationEventFailureLog(event, p, setting)
+            await this.saveNotificationEventFailureLog(event, p, setting)
         } else {
             let eventLog = this.eventLogBuilder.buildEventLog(event, p.dest, true, setting);
-            this.eventLogRepository.saveEventLog(eventLog);
+            await this.eventLogRepository.saveEventLog(eventLog);
         }
     }
 
-    private saveNotificationEventFailureLog(event: Event, p: any, setting: NotificationSettings) {
+    private async saveNotificationEventFailureLog(event: Event, p: any, setting: NotificationSettings) {
         let eventLog = this.eventLogBuilder.buildEventLog(event, p.dest, false, setting);
-        this.eventLogRepository.saveEventLog(eventLog);
+        await this.eventLogRepository.saveEventLog(eventLog);
     }
 }

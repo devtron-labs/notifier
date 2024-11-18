@@ -17,7 +17,7 @@
 import express from 'express';
 import { NotificationService, Event, Handler } from './notification/service/notificationService'
 import "reflect-metadata"
-import {ConnectionOptions, createConnection, getConnectionOptions, getManager} from "typeorm"
+import { ConnectionOptions, createConnection } from "typeorm"
 import { NotificationSettingsRepository } from "./repository/notificationSettingsRepository"
 import { SlackService } from './destination/destinationHandlers/slackHandler'
 import { SESService } from './destination/destinationHandlers/sesHandler'
@@ -46,14 +46,15 @@ import { WebhookConfig } from './entities/webhookconfig';
 import * as process from "process";
 import bodyParser from 'body-parser';
 import {connect, NatsConnection} from "nats";
-
+import { register } from 'prom-client'
 import {NOTIFICATION_EVENT_TOPIC} from "./pubSub/utils";
 import {PubSubServiceImpl} from "./pubSub/pubSub";
+import { failedNotificationMetricsCounter, httpRequestMetricsCounter, successNotificationMetricsCounter } from './common/metrics';
+
 const app = express();
 const natsUrl = process.env.NATS_URL
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(express.json());
-
 
 let logger = winston.createLogger({
     level: 'info',
@@ -124,12 +125,28 @@ createConnection(dbOptions).then(async connection => {
     logger.error("shutting down notifier due to un-successful database connection...")
     process.exit(1)
 });
-const natsEventHandler = (msg: string) => {
+
+const natsEventHandler = async (msg: string) => {
     const eventAsString = JSON.parse(msg)
     const event = JSON.parse(eventAsString) as Event
-    notificationService.sendNotification(event)
+    logger.info({natsEventBody: event})
+    const response = await notificationService.sendNotification(event)
+    if (response.status != 0){
+        successNotificationMetricsCounter.inc()
+    } else{
+        failedNotificationMetricsCounter.inc()
+    }
 }
-app.get('/', (req, res) => res.send('Welcome to notifier Notifier!'))
+
+// Request counter for all endpoints
+app.use((req, res, next) => {
+    httpRequestMetricsCounter.labels({method: req.method, endpoint: req.url, statusCode: res.statusCode}).inc()
+    next()
+  })
+
+app.get('/', (req, res) => {
+    res.send('Welcome to notifier Notifier!')
+})
 
 app.get('/health', (req, res) => {
     res.status(200).send("healthy")
@@ -145,9 +162,16 @@ app.post('/notify', async(req, res) => {
     const response=await notificationService.sendNotification(req.body);
     if (response.status!=0){
         res.status(response.status).json({message:response.message}).send()
+        successNotificationMetricsCounter.inc()
     }else{
         res.status(response.error.statusCode).json({message:response.error.message}).send()
+        failedNotificationMetricsCounter.inc()
     }
+});
+
+app.get('/metrics', async (req, res) => {
+    res.setHeader('Content-Type', register.contentType)
+    res.send(await register.metrics())
 });
 
 app.listen(3000, () => logger.info('Notifier app listening on port 3000!'))
