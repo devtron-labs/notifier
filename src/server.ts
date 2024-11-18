@@ -159,8 +159,6 @@ app.get('/test', (req, res) => {
 
 app.post('/notify', async(req, res) => {
     logger.info("notifications Received")
-    console.log('endpoint:', JSON.stringify(req.baseUrl))
-    console.log('payload:', JSON.stringify(req.body))
     const response=await notificationService.sendNotification(req.body);
     if (response.status!=0){
         res.status(response.status).json({message:response.message}).send()
