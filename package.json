@@ -45,6 +45,7 @@
     "overrides": {
         "node-gcm": {
             "axios": "1.7.7"
-        }
+        },
+        "tar-stream": "^3.0.0"
     }
 }

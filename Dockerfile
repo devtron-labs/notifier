@@ -2,10 +2,10 @@ FROM node AS builder
 
 WORKDIR /app
 COPY package.json .
-RUN yarn install
+RUN npm install
 
 COPY /.  .
-RUN  yarn build-ts
+RUN  npm run build-ts
 
 FROM node:14.2.0
 
