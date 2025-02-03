@@ -64,7 +64,10 @@ export class SESService implements Handler {
         const providersSet = new Set(providerObjects);
         this.sesConfig = null
         for (const element of providersSet) {
-            if (element['dest'] === "ses") {
+            if ((element['dest'] === "ses") && (element['configId'] != 0)) {
+                await this.getConfigById(element['configId'], providersSet, event, sesTemplate, setting, destinationMap, configsMap)
+                break
+            } else if (element['dest'] === "ses") {
                 await this.getDefaultConfig(providersSet, event, sesTemplate, setting, destinationMap, configsMap)
                 break
             }
@@ -99,6 +102,36 @@ export class SESService implements Handler {
         } catch (error) {
             this.logger.error('getDefaultConfig', error)
             throw new CustomError("Unable to send ses notification",500);
+        }
+    }
+
+    private async getConfigById(id,providersSet, event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, emailMap: Map<string, boolean>, configsMap: Map<string, boolean> ){
+        try {
+            const config = await this.sesConfigRepository.findBySESConfigId(id)
+            this.sesConfig = {
+                region: config['region'],
+                access_key: config['access_key'],
+                secret_access_key: config['secret_access_key'],
+                from_email: config['from_email']
+            }
+            if(this.sesConfig && this.sesConfig.from_email){
+                for (const p of providersSet) {
+                    if (p['dest'] == "ses") {
+                        let recipient = p['recipient']
+                        let configKey = '';
+                        if(recipient) {
+                            configKey = p['dest'] + '-' + recipient
+                        }
+                        if (!configsMap.get(configKey)) {
+                            await this.processNotification(recipient, event, sesTemplate, setting, p, emailMap)
+                            configsMap.set(configKey, true)
+                        }
+                    }
+                };
+            }
+        } catch (error) {
+            this.logger.error('getDefaultConfig', error)
+            throw new CustomError("Unable to send SES notification",500);
         }
     }
 
