@@ -64,7 +64,10 @@ export class SMTPService implements Handler {
         const providersSet = new Set(providerObjects);
         this.smtpConfig = null
         for (const element of providersSet) {
-            if (element['dest'] === "smtp") {
+            if ((element['dest'] === "smtp") && (element['configId'] != 0)) {
+                await this.getConfigById(element['configId'], providersSet, event, sesTemplate, setting, destinationMap, configsMap)
+                break
+            } else if (element['dest'] === "smtp") {
                 await this.getDefaultConfig(providersSet, event, sesTemplate, setting, destinationMap, configsMap)
                 break
             }
@@ -85,20 +88,48 @@ export class SMTPService implements Handler {
             if(this.smtpConfig && this.smtpConfig.from_email){
                 for (const p of providersSet) {
                     if (p['dest'] == "smtp") {
-                        let userId = p['configId']
                         let recipient = p['recipient']
                         let configKey = '';
                         if(recipient) {
                             configKey = p['dest'] + '-' + recipient
-                        }else{
-                            configKey = p['dest'] + '-' + userId
                         }
                         if (!configsMap.get(configKey)) {
-                            await this.processNotification(userId, recipient, event, sesTemplate, setting, p, emailMap)
+                            await this.processNotification(recipient, event, sesTemplate, setting, p, emailMap)
                             configsMap.set(configKey, true)
                         }
                     }
-                };
+                }
+            }
+        } catch (error) {
+            this.logger.error('getDefaultConfig', error)
+            throw new CustomError("Unable to send SMTP notification",500);
+        }
+    }
+
+    private async getConfigById(id,providersSet, event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, emailMap: Map<string, boolean>, configsMap: Map<string, boolean> ){
+        try {
+            const config = await this.smtpConfigRepository.findBySMTPConfigId(id)
+            this.smtpConfig = {
+                port: config['port'],
+                host: config['host'],
+                auth_user: config['auth_user'],
+                auth_password: config['auth_password'],
+                from_email: config['from_email']
+            }
+            if(this.smtpConfig && this.smtpConfig.from_email){
+                for (const p of providersSet) {
+                    if (p['dest'] == "smtp") {
+                        let recipient = p['recipient']
+                        let configKey = '';
+                        if(recipient) {
+                            configKey = p['dest'] + '-' + recipient
+                        }
+                        if (!configsMap.get(configKey)) {
+                            await this.processNotification(recipient, event, sesTemplate, setting, p, emailMap)
+                            configsMap.set(configKey, true)
+                        }
+                    }
+                }
             }
         } catch (error) {
             this.logger.error('getDefaultConfig', error)
@@ -150,7 +181,7 @@ export class SMTPService implements Handler {
             catch(error: any) {
                 this.logger.error(error.message);
                 await this.saveNotificationEventFailureLog(event, p, setting);
-            };
+            }
         } else {
             try {
                 const result = this.sendNotification(event, sdk, smtpTemplate.template_payload)
@@ -158,26 +189,16 @@ export class SMTPService implements Handler {
             catch(error: any)  {
                 this.logger.error(error.message);
                 await this.saveNotificationEventFailureLog(event, p, setting);
-            };
+            }
         }
     }
 
-    private async processNotification(userId: number, recipient: string, event: Event, smtpTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
-        if(userId) {
-            const user = await this.usersRepository.findByUserId(userId)
-            if (!user) {
-                this.logger.info('no user found for id - ' + userId)
-                this.logger.info(event.correlationId)
-                return
-            }
-            await this.sendEmailIfNotDuplicate(user['email_id'], event, smtpTemplate, setting, p, emailMap)
-        }else{
-            if (!recipient) {
-                this.logger.error('recipient is blank')
-                return
-            }
-            await this.sendEmailIfNotDuplicate(recipient, event, smtpTemplate, setting, p, emailMap)
+    private async processNotification(recipient: string, event: Event, smtpTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
+        if (!recipient) {
+            this.logger.error('recipient is blank')
+            return
         }
+        await this.sendEmailIfNotDuplicate(recipient, event, smtpTemplate, setting, p, emailMap)
     }
 
     private async sendEmailIfNotDuplicate(recipient : string, event: Event, smtpTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
