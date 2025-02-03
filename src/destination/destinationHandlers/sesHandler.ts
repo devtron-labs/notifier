@@ -84,16 +84,13 @@ export class SESService implements Handler {
             if(this.sesConfig && this.sesConfig.from_email){
                 for (const p of providersSet) {
                     if (p['dest'] == "ses") {
-                        let userId = p['configId']
                         let recipient = p['recipient']
                         let configKey = '';
                         if(recipient) {
                             configKey = p['dest'] + '-' + recipient
-                        }else{
-                            configKey = p['dest'] + '-' + userId
                         }
                         if (!configsMap.get(configKey)) {
-                            await this.processNotification(userId, recipient, event, sesTemplate, setting, p, emailMap)
+                            await this.processNotification(recipient, event, sesTemplate, setting, p, emailMap)
                             configsMap.set(configKey, true)
                         }
                     }
@@ -163,22 +160,12 @@ export class SESService implements Handler {
         }
     }
 
-    private async processNotification(userId: number, recipient: string, event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
-        if(userId) {
-            const user = await this.usersRepository.findByUserId(userId)
-            if (!user) {
-                this.logger.info('no user found for id - ' + userId)
-                this.logger.info(event.correlationId)
-                return
-            }
-            await this.sendEmailIfNotDuplicate(user['email_id'], event, sesTemplate, setting, p, emailMap)
-        }else{
-            if (!recipient) {
-                this.logger.error('recipient is blank')
-                return
-            }
-            await this.sendEmailIfNotDuplicate(recipient, event, sesTemplate, setting, p, emailMap)
+    private async processNotification(recipient: string, event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
+        if (!recipient) {
+            this.logger.error('recipient is blank')
+            return
         }
+        await this.sendEmailIfNotDuplicate(recipient, event, sesTemplate, setting, p, emailMap)
     }
 
     private async sendEmailIfNotDuplicate(recipient : string, event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
