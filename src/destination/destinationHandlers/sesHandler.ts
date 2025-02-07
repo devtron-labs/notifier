@@ -64,7 +64,10 @@ export class SESService implements Handler {
         const providersSet = new Set(providerObjects);
         this.sesConfig = null
         for (const element of providersSet) {
-            if (element['dest'] === "ses") {
+            if ((element['dest'] === "ses") && (element['configId'] != 0)) {
+                await this.getConfigById(element['configId'], providersSet, event, sesTemplate, setting, destinationMap, configsMap)
+                break
+            } else if (element['dest'] === "ses") {
                 await this.getDefaultConfig(providersSet, event, sesTemplate, setting, destinationMap, configsMap)
                 break
             }
@@ -84,16 +87,13 @@ export class SESService implements Handler {
             if(this.sesConfig && this.sesConfig.from_email){
                 for (const p of providersSet) {
                     if (p['dest'] == "ses") {
-                        let userId = p['configId']
                         let recipient = p['recipient']
                         let configKey = '';
                         if(recipient) {
                             configKey = p['dest'] + '-' + recipient
-                        }else{
-                            configKey = p['dest'] + '-' + userId
                         }
                         if (!configsMap.get(configKey)) {
-                            await this.processNotification(userId, recipient, event, sesTemplate, setting, p, emailMap)
+                            await this.processNotification(recipient, event, sesTemplate, setting, p, emailMap)
                             configsMap.set(configKey, true)
                         }
                     }
@@ -102,6 +102,36 @@ export class SESService implements Handler {
         } catch (error) {
             this.logger.error('getDefaultConfig', error)
             throw new CustomError("Unable to send ses notification",500);
+        }
+    }
+
+    private async getConfigById(id,providersSet, event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, emailMap: Map<string, boolean>, configsMap: Map<string, boolean> ){
+        try {
+            const config = await this.sesConfigRepository.findBySESConfigId(id)
+            this.sesConfig = {
+                region: config['region'],
+                access_key: config['access_key'],
+                secret_access_key: config['secret_access_key'],
+                from_email: config['from_email']
+            }
+            if(this.sesConfig && this.sesConfig.from_email){
+                for (const p of providersSet) {
+                    if (p['dest'] == "ses") {
+                        let recipient = p['recipient']
+                        let configKey = '';
+                        if(recipient) {
+                            configKey = p['dest'] + '-' + recipient
+                        }
+                        if (!configsMap.get(configKey)) {
+                            await this.processNotification(recipient, event, sesTemplate, setting, p, emailMap)
+                            configsMap.set(configKey, true)
+                        }
+                    }
+                };
+            }
+        } catch (error) {
+            this.logger.error('getDefaultConfig', error)
+            throw new CustomError("Unable to send SES notification",500);
         }
     }
 
@@ -163,22 +193,12 @@ export class SESService implements Handler {
         }
     }
 
-    private async processNotification(userId: number, recipient: string, event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
-        if(userId) {
-            const user = await this.usersRepository.findByUserId(userId)
-            if (!user) {
-                this.logger.info('no user found for id - ' + userId)
-                this.logger.info(event.correlationId)
-                return
-            }
-            await this.sendEmailIfNotDuplicate(user['email_id'], event, sesTemplate, setting, p, emailMap)
-        }else{
-            if (!recipient) {
-                this.logger.error('recipient is blank')
-                return
-            }
-            await this.sendEmailIfNotDuplicate(recipient, event, sesTemplate, setting, p, emailMap)
+    private async processNotification(recipient: string, event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
+        if (!recipient) {
+            this.logger.error('recipient is blank')
+            return
         }
+        await this.sendEmailIfNotDuplicate(recipient, event, sesTemplate, setting, p, emailMap)
     }
 
     private async sendEmailIfNotDuplicate(recipient : string, event: Event, sesTemplate: NotificationTemplates, setting: NotificationSettings, p: string, emailMap: Map<string, boolean>) {
