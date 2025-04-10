@@ -257,5 +257,6 @@ class Event {
     isProdEnv: boolean
     baseUrl?: string
     envIdsForCiPipeline?: number[]
+    isDeploymentDoneWithoutApproval?: boolean
 }
 export {NotificationService, Event}
