@@ -217,7 +217,7 @@ export class SESService implements Handler {
             parsedEvent['fromEmail'] = event.payload['fromEmail'];
             parsedEvent['toEmail'] = event.payload['toEmail'];
             this.logger.info('parsedEvent')
-            this.logger.info(parsedEvent)
+            this.logger.info(JSON.stringify(parsedEvent))
             this.logger.info('template')
             this.logger.info(template)
             let json: string
@@ -231,6 +231,8 @@ export class SESService implements Handler {
             }
             else{
                 json = Mustache.render(template, parsedEvent)
+                this.logger.info('renderedJson')
+                this.logger.info(JSON.stringify(json))
             }
 
             const res = await sdk.send(
