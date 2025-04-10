@@ -216,6 +216,10 @@ export class SESService implements Handler {
             let parsedEvent = this.mh.parseEvent(event);
             parsedEvent['fromEmail'] = event.payload['fromEmail'];
             parsedEvent['toEmail'] = event.payload['toEmail'];
+            this.logger.info('parsedEvent')
+            this.logger.info(parsedEvent)
+            this.logger.info('template')
+            this.logger.info(template)
             let json: string
             if(event.eventTypeId===4 || event.eventTypeId === EVENT_TYPE.ImagePromotion){
                 let commentDisplayStyle = (event.payload.imageComment === "") ? 'none' : 'inline';
