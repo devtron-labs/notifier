@@ -66,7 +66,7 @@ export interface WebhookParsedEvent {
     devtronTriggeredByEmail: string;
     devtronContainerImageTag?: string;
     devtronContainerImageRepo?: string;
-    devtronBuildGitCommitHash?: string;
+    devtronBuildGitCommitHash?: string[];
     scannedAt?: Date;
     scannedBy?: string;
     vulnerabilities?: vulnerability[];

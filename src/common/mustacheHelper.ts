@@ -20,6 +20,7 @@ import e, { json } from 'express';
 import {EVENT_TYPE, ParsedScoopNotification} from "./types";
 import { ciMaterials ,ParsedCIEvent,vulnerability,severityCount,WebhookParsedEvent,ParseApprovalEvent,ParseConfigApprovalEvent,ParsedCDEvent} from './types';
 import Mustache from "mustache";
+import {getCommitsFromGitTriggers} from "./getCommitsFromGitTriggers";
 export class MustacheHelper {
     private CD_STAGE = {
         DEPLOY: "Deployment",
@@ -291,7 +292,8 @@ export class MustacheHelper {
                 const index = event.payload.dockerImageUrl.lastIndexOf(":");
                 devtronContainerImageTag=event.payload.dockerImageUrl.substring(index + 1) ;
                 devtronContainerImageRepo=event.payload.dockerImageUrl.substring(0,index);
-            } 
+            }
+        let devtronBuildGitCommitHash = getCommitsFromGitTriggers(event.payload.material);
 
         return {
           eventType: eventType,
@@ -306,7 +308,7 @@ export class MustacheHelper {
           devtronContainerImageTag:devtronContainerImageTag,
           devtronContainerImageRepo:devtronContainerImageRepo,
           devtronApprovedByEmail: event.payload.approvedByEmail,
-          devtronBuildGitCommitHash: event.payload.material.gitTriggers[0]?.Commit,
+          devtronBuildGitCommitHash: devtronBuildGitCommitHash,
           ciMaterials:ciMaterials,
           vulnerabilities:vulnerabilities,
           severityCount:severityCount,
