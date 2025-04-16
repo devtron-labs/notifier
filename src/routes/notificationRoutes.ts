@@ -34,6 +34,31 @@ export const createNotificationRouter = (notificationService: NotificationServic
         }
     });
 
+    router.post('/notify/v2', async(req, res) => {
+        logger.info("notifications V2 Received");
+        const { event, notificationSettings } = req.body;
+
+        // log the event and notificationSettings
+        logger.info("event: ", event);
+        logger.info("notificationSettings: ", notificationSettings);
+
+        if (!event || !notificationSettings) {
+            logger.error("Missing required fields: event or notificationSettings");
+            res.status(400).json({message: "Missing required fields: event or notificationSettings"}).send();
+            failedNotificationMetricsCounter.inc();
+            return;
+        }
+
+        const response = await notificationService.sendNotificationV2(event, notificationSettings);
+        if (response.status != 0) {
+            res.status(response.status).json({message: response.message}).send();
+            successNotificationMetricsCounter.inc();
+        } else {
+            res.status(response.error.statusCode).json({message: response.error.message}).send();
+            failedNotificationMetricsCounter.inc();
+        }
+    });
+
     return router;
 };
 
