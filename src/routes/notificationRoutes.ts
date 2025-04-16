@@ -38,6 +38,10 @@ export const createNotificationRouter = (notificationService: NotificationServic
         logger.info("notifications V2 Received");
         const { event, notificationSettings } = req.body;
 
+        // log the event and notificationSettings
+        logger.info("event: ", event);
+        logger.info("notificationSettings: ", notificationSettings);
+
         if (!event || !notificationSettings) {
             logger.error("Missing required fields: event or notificationSettings");
             res.status(400).json({message: "Missing required fields: event or notificationSettings"}).send();
