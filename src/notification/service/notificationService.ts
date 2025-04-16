@@ -180,6 +180,85 @@ class NotificationService {
     }
 
     /**
+     * Enhanced function to send notifications with pre-provided notification settings
+     * @param event The event to send notifications for
+     * @param notificationSettings The pre-provided notification settings
+     * @returns CustomResponse with status and message
+     */
+    public async sendNotificationV2(event: Event, notificationSettings: NotificationSettings[]): Promise<CustomResponse> {
+        try {
+            this.logger.info(`Processing notification V2 for event type: ${event.eventTypeId}, correlationId: ${event.correlationId}`);
+            this.logger.info(`Using ${notificationSettings.length} pre-provided notification settings`);
+
+            // Handle approval notifications
+            if (event.payload.providers && event.payload.providers.length > 0) {
+                this.logger.info(`Processing approval notification with ${event.payload.providers.length} providers`);
+                await this.sendApprovalNotification(event);
+                this.logger.info(`Approval notification sent successfully`);
+                return new CustomResponse("notification sent", 200);
+            }
+
+            // Handle scoop notification events
+            if (event.eventTypeId == EVENT_TYPE.ScoopNotification) {
+                this.logger.info(`Processing scoop notification event`);
+                return await this.handleScoopNotification(event);
+            }
+
+            // Validate event
+            if (!this.isValidEvent(event)) {
+                this.logger.error(`Invalid event: ${JSON.stringify({
+                    eventTypeId: event.eventTypeId,
+                    pipelineType: event.pipelineType,
+                    correlationId: event.correlationId,
+                    hasPayload: !!event.payload,
+                    hasBaseUrl: !!event.baseUrl
+                })}`);
+                throw new CustomError("Event is not valid", 400);
+            }
+            this.logger.info(`Event validation passed`);
+
+            // Check if notification settings are provided
+            if (!notificationSettings || notificationSettings.length === 0) {
+                this.logger.warn(`No notification settings provided for event ${event.correlationId}`);
+                return new CustomResponse("", 0, new CustomError("no notification settings provided", 400));
+            }
+            this.logger.info(`Found ${notificationSettings.length} notification settings`);
+
+            // Process notification settings
+            this.logger.info(`Preparing notification maps`);
+            const { destinationMap, configsMap } = this.prepareNotificationMaps(notificationSettings);
+
+            // Process each setting
+            this.logger.info(`Processing ${notificationSettings.length} notification settings`);
+            for (let i = 0; i < notificationSettings.length; i++) {
+                const setting = notificationSettings[i];
+                this.logger.info(`Processing notification setting ${i+1}/${notificationSettings.length}, ID: ${setting.id}`);
+                const result = await this.processNotificationSetting(event, setting, configsMap, destinationMap);
+                if (result.status === 0) {
+                    this.logger.error(`Error processing notification setting: ${result.error?.message}`);
+                    return result; // Return error if any
+                }
+            }
+
+            this.logger.info(`All notifications processed successfully`);
+            return new CustomResponse("notification sent", 200);
+        } catch (error: any) {
+            const errorMessage = error.message || 'Unknown error';
+            const errorStack = error.stack || '';
+            this.logger.error(`Error in sendNotificationV2: ${errorMessage}\nStack: ${errorStack}`);
+
+            if (error instanceof CustomError) {
+                this.logger.error(`CustomError with status code: ${error.statusCode}`);
+                return new CustomResponse("", 0, error);
+            } else {
+                const customError = new CustomError(errorMessage, 400);
+                this.logger.error(`Converted to CustomError with status code: 400`);
+                return new CustomResponse("", 0, customError);
+            }
+        }
+    }
+
+    /**
      * Handle scoop notification events (webhook or slack)
      * @param event The scoop notification event
      * @returns CustomResponse with status and message
