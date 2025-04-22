@@ -15,7 +15,7 @@
  */
 
 import { Router } from 'express';
-import { send } from '../tests/sendSlackNotification';
+import { send } from '../tests/sendSlackNotification.test';
 
 const router = Router();
 
