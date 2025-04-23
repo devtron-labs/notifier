@@ -24,9 +24,33 @@ import { successNotificationMetricsCounter, failedNotificationMetricsCounter } f
 
 export const natsEventHandler = (notificationService: NotificationService) => async (msg: string) => {
     const eventAsString = JSON.parse(msg);
-    const event = JSON.parse(eventAsString) as Event;
-    logger.info({ natsEventBody: event });
-    const response = await notificationService.sendNotification(event);
+    const parsedData = JSON.parse(eventAsString);
+    let response;
+
+    try {
+        // First try to parse as V2 format (which includes both event and notificationSettings)
+        logger.info('Attempting to parse as V2 payload');
+        if (parsedData.event && parsedData.notificationSettings) {
+            // This is a V2 payload
+            const { event, notificationSettings } = parsedData;
+            logger.info({ natsEventBodyV2: { event, notificationSettingsCount: notificationSettings.length } });
+            response = await notificationService.sendNotificationV2(event, notificationSettings);
+        } else {
+            // Fall back to V1 format (which only includes the event)
+            logger.info('Falling back to V1 payload format');
+            const event = parsedData as Event;
+            logger.info({ natsEventBodyV1: event });
+            response = await notificationService.sendNotification(event);
+        }
+    } catch (error: any) {
+         {
+            logger.error(`Failed to process message in both V1 and V2 formats: ${error.message || 'Unknown error'}`);
+            failedNotificationMetricsCounter.inc();
+            throw error;
+        }
+    }
+
+    // Handle response metrics
     if (response.status != 0) {
         successNotificationMetricsCounter.inc();
     } else {
@@ -36,12 +60,12 @@ export const natsEventHandler = (notificationService: NotificationService) => as
 
 export const connectToNats = async (notificationService: NotificationService) => {
     const natsUrl = process.env.NATS_URL;
-    
+
     if (!natsUrl) {
         logger.info("NATS_URL not provided, skipping NATS connection");
         return;
     }
-    
+
     try {
         logger.info("Connecting to NATS server...");
         const conn: NatsConnection = await connect({ servers: natsUrl });
