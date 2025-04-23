@@ -20,12 +20,22 @@ import { PubSubServiceImpl } from "../pubSub/pubSub";
 import { NOTIFICATION_EVENT_TOPIC } from "../pubSub/utils";
 import { Event } from "../notification/service/notificationService";
 import { NotificationService } from "../notification/service/notificationService";
+import { NotificationServiceDeprecated } from "../notification/service/notificationService_deprecated";
 import { successNotificationMetricsCounter, failedNotificationMetricsCounter } from '../common/metrics';
 
 export const natsEventHandler = (notificationService: NotificationService) => async (msg: string) => {
     const eventAsString = JSON.parse(msg);
     const parsedData = JSON.parse(eventAsString);
     let response;
+
+    // Create an instance of the deprecated service for handling legacy requests
+    const notificationServiceDeprecated = new NotificationServiceDeprecated(
+        notificationService['eventRepository'],
+        notificationService['notificationSettingsRepository'],
+        notificationService['templatesRepository'],
+        notificationService['handlers'],
+        notificationService['logger']
+    );
 
     try {
         // First try to parse as V2 format (which includes both event and notificationSettings)
@@ -37,10 +47,10 @@ export const natsEventHandler = (notificationService: NotificationService) => as
             response = await notificationService.sendNotificationV2(event, notificationSettings);
         } else {
             // Fall back to V1 format (which only includes the event)
-            logger.info('Falling back to V1 payload format');
+            logger.info('Falling back to V1 payload format (deprecated)');
             const event = parsedData as Event;
             logger.info({ natsEventBodyV1: event });
-            response = await notificationService.sendNotification(event);
+            response = await notificationServiceDeprecated.sendNotification(event);
         }
     } catch (error: any) {
          {

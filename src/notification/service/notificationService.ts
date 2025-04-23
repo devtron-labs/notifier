@@ -28,18 +28,23 @@ import {SlackService} from "../../destination/destinationHandlers/slackHandler";
 import {NotifmeSdk} from 'notifme-sdk'
 import {CustomError, CustomResponse} from "../../entities/events";
 
+/**
+ * @deprecated The sendNotification function has been moved to notificationService_deprecated.ts
+ * Please use sendNotificationV2 instead.
+ */
+
 export interface Handler {
     handle(event: Event, templates: (NotificationTemplates[] | WebhookConfig[]), setting: NotificationSettings, configMap: Map<string, boolean>, destinationMap: Map<string, boolean>): Promise<boolean>
 
     sendNotification(event: Event, sdk: any, template: string)
 }
 
-class NotificationService {
-    private eventRepository: EventRepository
-    private notificationSettingsRepository: NotificationSettingsRepository
-    private templatesRepository: NotificationTemplatesRepository
-    private readonly handlers: Handler[]
-    private logger: any
+export class NotificationService {
+    protected eventRepository: EventRepository
+    protected notificationSettingsRepository: NotificationSettingsRepository
+    protected templatesRepository: NotificationTemplatesRepository
+    protected readonly handlers: Handler[]
+    protected logger: any
 
     constructor(eventRepository: EventRepository, notificationSettingsRepository: NotificationSettingsRepository, templatesRepository: NotificationTemplatesRepository, handlers: Handler[], logger: any) {
         this.eventRepository = eventRepository
@@ -138,45 +143,12 @@ class NotificationService {
         }
 
     /**
-     * Main function to send notifications based on event type
-     * @param event The event to send notifications for
-     * @returns CustomResponse with status and message
+     * @deprecated This method has been moved to notificationService_deprecated.ts
+     * Please use sendNotificationV2 instead.
      */
     public async sendNotification(event: Event): Promise<CustomResponse> {
-        try {
-            this.logger.info(`Processing notification for event type: ${event.eventTypeId}, correlationId: ${event.correlationId}`);
-
-            // Handle approval notifications
-            if (event.payload.providers && event.payload.providers.length > 0) {
-                this.logger.info(`Processing approval notification with ${event.payload.providers.length} providers`);
-                await this.sendApprovalNotification(event);
-                this.logger.info(`Approval notification sent successfully`);
-                return new CustomResponse("notification sent", 200);
-            }
-
-            // Handle scoop notification events
-            if (event.eventTypeId == EVENT_TYPE.ScoopNotification) {
-                this.logger.info(`Processing scoop notification event`);
-                return await this.handleScoopNotification(event);
-            }
-
-            // Handle regular notifications
-            this.logger.info(`Processing regular notification event`);
-            return await this.handleRegularNotification(event);
-        } catch (error: any) {
-            const errorMessage = error.message || 'Unknown error';
-            const errorStack = error.stack || '';
-            this.logger.error(`Error in sendNotification: ${errorMessage}\nStack: ${errorStack}`);
-
-            if (error instanceof CustomError) {
-                this.logger.error(`CustomError with status code: ${error.statusCode}`);
-                return new CustomResponse("", 0, error);
-            } else {
-                const customError = new CustomError(errorMessage, 400);
-                this.logger.error(`Converted to CustomError with status code: 400`);
-                return new CustomResponse("", 0, customError);
-            }
-        }
+        this.logger.warn(`The sendNotification method is deprecated. Please use sendNotificationV2 instead.`);
+        throw new CustomError("This method has been deprecated. Please use sendNotificationV2 instead.", 400);
     }
 
     /**
@@ -263,7 +235,7 @@ class NotificationService {
      * @param event The scoop notification event
      * @returns CustomResponse with status and message
      */
-    private async handleScoopNotification(event: Event): Promise<CustomResponse> {
+    protected async handleScoopNotification(event: Event): Promise<CustomResponse> {
         try {
             this.logger.info(`Handling scoop notification for event ID: ${event.correlationId}`);
 
@@ -296,62 +268,12 @@ class NotificationService {
     }
 
     /**
-     * Handle regular notification events
-     * @param event The regular notification event
-     * @returns CustomResponse with status and message
+     * @deprecated This method has been moved to notificationService_deprecated.ts
+     * Please use methods from sendNotificationV2 instead.
      */
-    private async handleRegularNotification(event: Event): Promise<CustomResponse> {
-        try {
-            this.logger.info(`Handling regular notification for event ID: ${event.correlationId}, type: ${event.eventTypeId}`);
-
-            // Validate event
-            if (!this.isValidEvent(event)) {
-                this.logger.error(`Invalid event: ${JSON.stringify({
-                    eventTypeId: event.eventTypeId,
-                    pipelineType: event.pipelineType,
-                    correlationId: event.correlationId,
-                    hasPayload: !!event.payload,
-                    hasBaseUrl: !!event.baseUrl
-                })}`);
-                throw new CustomError("Event is not valid", 400);
-            }
-            this.logger.info(`Event validation passed`);
-
-            // Get notification settings
-            this.logger.info(`Finding notification settings for event: ${event.correlationId}`);
-            const settingsResults = await this.findNotificationSettings(event);
-            if (!settingsResults || settingsResults.length == 0) {
-                this.logger.warn(`No notification settings found for event ${event.correlationId}`);
-                return new CustomResponse("", 0, new CustomError("no notification settings found for event", 404));
-            }
-            this.logger.info(`Found ${settingsResults.length} notification settings`);
-
-            // Process notification settings
-            this.logger.info(`Preparing notification maps`);
-            const { destinationMap, configsMap } = this.prepareNotificationMaps(settingsResults);
-
-            // Process each setting
-            this.logger.info(`Processing ${settingsResults.length} notification settings`);
-            for (let i = 0; i < settingsResults.length; i++) {
-                const setting = settingsResults[i];
-                this.logger.info(`Processing notification setting ${i+1}/${settingsResults.length}, ID: ${setting.id}`);
-                const result = await this.processNotificationSetting(event, setting, configsMap, destinationMap);
-                if (result.status === 0) {
-                    this.logger.error(`Error processing notification setting: ${result.error?.message}`);
-                    return result; // Return error if any
-                }
-            }
-
-            this.logger.info(`All notifications processed successfully`);
-            return new CustomResponse("notification sent", 200);
-        } catch (error: any) {
-            const errorMessage = error.message || 'Unknown error';
-            this.logger.error(`Error in handleRegularNotification: ${errorMessage}`);
-            if (error.stack) {
-                this.logger.error(`Stack trace: ${error.stack}`);
-            }
-            throw error; // Let the parent function handle the error
-        }
+    protected async handleRegularNotification(event: Event): Promise<CustomResponse> {
+        this.logger.warn(`The handleRegularNotification method is deprecated.`);
+        throw new CustomError("This method has been deprecated.", 400);
     }
 
     /**
@@ -359,7 +281,7 @@ class NotificationService {
      * @param event The event to find settings for
      * @returns Array of notification settings
      */
-    private async findNotificationSettings(event: Event): Promise<NotificationSettings[]> {
+    protected async findNotificationSettings(event: Event): Promise<NotificationSettings[]> {
         try {
             this.logger.info(`Finding notification settings for event ID: ${event.correlationId}`);
             this.logger.info(`Search parameters: pipelineType=${event.pipelineType}, pipelineId=${event.pipelineId}, ` +
@@ -399,7 +321,7 @@ class NotificationService {
      * @param settingsResults The notification settings
      * @returns Object containing destinationMap and configsMap
      */
-    private prepareNotificationMaps(settingsResults: NotificationSettings[]): { destinationMap: Map<string, boolean>, configsMap: Map<string, boolean> } {
+    protected prepareNotificationMaps(settingsResults: NotificationSettings[]): { destinationMap: Map<string, boolean>, configsMap: Map<string, boolean> } {
         try {
             this.logger.info(`Preparing notification maps for ${settingsResults.length} settings`);
             let destinationMap = new Map<string, boolean>();
@@ -458,7 +380,7 @@ class NotificationService {
      * @param destinationMap Map of destinations that have been processed
      * @returns CustomResponse with status and message
      */
-    private async processNotificationSetting(
+    protected async processNotificationSetting(
         event: Event,
         setting: NotificationSettings,
         configsMap: Map<string, boolean>,
@@ -520,7 +442,7 @@ class NotificationService {
      * @param destinationMap Map of destinations that have been processed
      * @returns CustomResponse with status and message
      */
-    private async processWebhookConfigs(
+    protected async processWebhookConfigs(
         event: Event,
         setting: NotificationSettings,
         webhookConfig: any[],
@@ -572,7 +494,7 @@ class NotificationService {
      * @param configsMap Map of configs that have been processed
      * @param destinationMap Map of destinations that have been processed
      */
-    private async processWebhookHandlers(
+    protected async processWebhookHandlers(
         event: Event,
         templates: WebhookConfig[],
         setting: NotificationSettings,
@@ -630,7 +552,7 @@ class NotificationService {
      * @param destinationMap Map of destinations that have been processed
      * @returns CustomResponse with status and message
      */
-    private async processOtherConfigs(
+    protected async processOtherConfigs(
         event: Event,
         setting: NotificationSettings,
         configsMap: Map<string, boolean>,
@@ -677,7 +599,7 @@ class NotificationService {
      * @param event The event to validate
      * @returns boolean indicating if the event is valid
      */
-    private isValidEvent(event: Event): boolean {
+    protected isValidEvent(event: Event): boolean {
         try {
             // Check if it's a scoop notification event (special case)
             if (event.eventTypeId == EVENT_TYPE.ScoopNotification) {
@@ -713,7 +635,7 @@ class NotificationService {
      * @param event The event to validate
      * @returns boolean indicating if the event is valid for approval
      */
-    private isValidEventForApproval(event: Event): boolean {
+    protected isValidEventForApproval(event: Event): boolean {
         try {
             // Check if it's a scoop notification event (special case)
             if (event.eventTypeId == EVENT_TYPE.ScoopNotification && event.correlationId && event.payload) {
@@ -759,4 +681,4 @@ class Event {
     baseUrl?: string
     envIdsForCiPipeline?: number[]
 }
-export {NotificationService, Event}
+export {Event}

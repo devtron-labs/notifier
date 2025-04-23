@@ -16,15 +16,24 @@
 
 import { Router } from 'express';
 import { NotificationService } from '../notification/service/notificationService';
+import { NotificationServiceDeprecated } from '../notification/service/notificationService_deprecated';
 import { logger } from '../config/logger';
 import { successNotificationMetricsCounter, failedNotificationMetricsCounter } from '../common/metrics';
 
 export const createNotificationRouter = (notificationService: NotificationService) => {
     const router = Router();
+    // Create an instance of the deprecated service for handling legacy requests
+    const notificationServiceDeprecated = new NotificationServiceDeprecated(
+        notificationService['eventRepository'],
+        notificationService['notificationSettingsRepository'],
+        notificationService['templatesRepository'],
+        notificationService['handlers'],
+        notificationService['logger']
+    );
 
     router.post('/notify', async(req, res) => {
-        logger.info("notifications Received");
-        const response = await notificationService.sendNotification(req.body);
+        logger.info("notifications Received (deprecated endpoint)");
+        const response = await notificationServiceDeprecated.sendNotification(req.body);
         if (response.status != 0) {
             res.status(response.status).json({message: response.message}).send();
             successNotificationMetricsCounter.inc();
