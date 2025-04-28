@@ -16,9 +16,11 @@
 
 import express from 'express';
 import bodyParser from 'body-parser';
+import { createRouter } from './routes';
 import { metricsMiddleware } from './middleware/metrics';
+import { NotificationService } from './notification/service/notificationService';
 
-export const createApp = () => {
+export const createApp = (notificationService: NotificationService) => {
     const app = express();
     
     // Middleware
@@ -27,6 +29,7 @@ export const createApp = () => {
     app.use(metricsMiddleware);
     
     // Routes
+    app.use(createRouter(notificationService));
     
     return app;
 };
