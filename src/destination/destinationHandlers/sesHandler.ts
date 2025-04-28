@@ -227,8 +227,6 @@ export class SESService implements Handler {
             }
             else{
                 json = Mustache.render(template, parsedEvent)
-                this.logger.info('renderedJson')
-                this.logger.info(JSON.stringify(json))
             }
 
             const res = await sdk.send(
