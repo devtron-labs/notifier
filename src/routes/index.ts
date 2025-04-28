@@ -16,16 +16,13 @@
 
 import { Router } from 'express';
 import healthRoutes from './healthRoutes';
-import createNotificationRouter from './notificationRoutes';
 import metricsRoutes from './metricsRoutes';
-import { NotificationService } from '../notification/service/notificationService';
 
-export const createRouter = (notificationService: NotificationService) => {
+export const createRouter = () => {
     const router = Router();
     
     // Mount routes
     router.use('/', healthRoutes);
-    router.use('/', createNotificationRouter(notificationService));
     router.use('/', metricsRoutes);
     
     return router;

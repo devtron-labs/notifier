@@ -35,7 +35,7 @@ const startServer = async () => {
         await connectToNats(notificationService);
 
         // Create and start the Express app
-        const app = createApp(notificationService);
+        const app = createApp();
 
         app.listen(PORT, () => {
             logger.info(`Notifier app listening on port ${PORT}!`);
