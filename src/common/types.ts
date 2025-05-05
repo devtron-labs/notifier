@@ -136,6 +136,8 @@ export interface ParsedCDEvent {
     dockerImg: string;
     deploymentWindowComment?: string;
     deploymentWindowCommentStyle?: string;
+    triggeredWithoutApproval?: string;
+    triggeredWithoutApprovalStyle?: string;
 }
 export enum EVENT_TYPE {
     Trigger = 1,

@@ -159,6 +159,8 @@ export class MustacheHelper {
                 deploymentHistoryLink: deploymentHistoryLink,
                 deploymentWindowComment: event.payload.timeWindowComment ?? '',
                 deploymentWindowCommentStyle: event.payload.timeWindowComment ? 'block' : 'none',
+                triggeredWithoutApproval: event.isDeploymentDoneWithoutApproval ? 'Deployment triggered without approval' : '',
+                triggeredWithoutApprovalStyle: event.isDeploymentDoneWithoutApproval ? 'block' : 'none'
             }
         }
         else if (event.eventTypeId===EVENT_TYPE.Approval){
