@@ -59,12 +59,14 @@ export interface WebhookParsedEvent {
     devtronEnvId?: number;
     devtronAppName?: string;
     devtronEnvName?: string;
+    devtronPipelineType?: string;
     devtronCdPipelineId?: number;
     devtronCiPipelineId?: number;
     devtronApprovedByEmail?: string[];
     devtronTriggeredByEmail: string;
     devtronContainerImageTag?: string;
     devtronContainerImageRepo?: string;
+    devtronBuildGitCommitHash?: string[];
     scannedAt?: Date;
     scannedBy?: string;
     vulnerabilities?: vulnerability[];
