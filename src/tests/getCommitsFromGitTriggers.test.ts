@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { getCommitsFromGitTriggers } from '../../src/common/getCommitsFromGitTriggers';
+import { getCommitsFromGitTriggers } from '../common/getCommitsFromGitTriggers';
 import { expect } from 'chai';
 
 describe('getCommitsFromGitTriggers', () => {
