@@ -17,7 +17,7 @@
 import fs from 'fs';
 import { Event } from '../notification/service/notificationService';
 
-export function getMustacheTemplate(event: Event) {
+export function getMustacheTemplateTest(event: Event) {
     if (event.pipelineType === "CI") {
         switch (event.eventTypeId) {
             case 1: return fs.readFileSync("src/tests/mustacheTemplate/CITrigger.mustache").toString();
