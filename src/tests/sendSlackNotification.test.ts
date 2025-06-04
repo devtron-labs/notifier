@@ -18,7 +18,7 @@ const fetch = require('node-fetch');
 import Mustache from 'mustache';
 import event from './data/cd.json';
 import { MustacheHelper } from '../common/mustacheHelper';
-import { getMustacheTemplate } from './getMustacheTemplate';
+import { getMustacheTemplateTest } from './getMustacheTemplate.test';
 import { Event } from '../notification/service/notificationService';
 // Used for sending notification on slack. triggers on /test
 export function send() {
@@ -26,7 +26,7 @@ export function send() {
     let mh = new MustacheHelper();
     
     let parsedEvent = mh.parseEvent(event);
-    let mustacheHash = getMustacheTemplate(event as Event);
+    let mustacheHash = getMustacheTemplateTest(event as Event);
     let json = Mustache.render(JSON.stringify(mustacheHash), parsedEvent);
     json = JSON.parse(json);
     fetch(webhookURL, { body: json, method: "POST" }).then((r) => {
