@@ -28,19 +28,12 @@ export const natsEventHandler = (notificationService: NotificationService) => as
     let response;
 
     try {
-        // First try to parse as V2 format (which includes both event and notificationSettings)
         logger.info('Attempting to parse as V2 payload');
         if (parsedData.event && parsedData.notificationSettings) {
             // This is a V2 payload
             const { event, notificationSettings } = parsedData;
             logger.info({ natsEventBodyV2: { event, notificationSettingsCount: notificationSettings.length } });
             response = await notificationService.sendNotificationV2(event, notificationSettings);
-        } else {
-            // Fall back to V1 format (which only includes the event)
-            logger.info('Falling back to V1 payload format');
-            const event = parsedData as Event;
-            logger.info({ natsEventBodyV1: event });
-            response = await notificationService.sendNotification(event);
         }
     } catch (error: any) {
          {
