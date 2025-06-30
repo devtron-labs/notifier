@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import {NotificationSettingsRepository} from "../../repository/notificationSettingsRepository";
 import {EventRepository} from "../../repository/eventsRepository";
 import {NotificationTemplatesRepository, WebhookConfigRepository} from "../../repository/templatesRepository";
 import {NotificationTemplates} from "../../entities/notificationTemplates";
@@ -30,20 +29,17 @@ import {CustomError, CustomResponse} from "../../entities/events";
 
 export interface Handler {
     handle(event: Event, templates: (NotificationTemplates[] | WebhookConfig[]), setting: NotificationSettings, configMap: Map<string, boolean>, destinationMap: Map<string, boolean>): Promise<boolean>
-
     sendNotification(event: Event, sdk: any, template: string)
 }
 
 class NotificationService {
     private eventRepository: EventRepository
-    private notificationSettingsRepository: NotificationSettingsRepository
     private templatesRepository: NotificationTemplatesRepository
     private readonly handlers: Handler[]
     private logger: any
 
-    constructor(eventRepository: EventRepository, notificationSettingsRepository: NotificationSettingsRepository, templatesRepository: NotificationTemplatesRepository, handlers: Handler[], logger: any) {
+    constructor(eventRepository: EventRepository, templatesRepository: NotificationTemplatesRepository, handlers: Handler[], logger: any) {
         this.eventRepository = eventRepository
-        this.notificationSettingsRepository = notificationSettingsRepository
         this.handlers = handlers
         this.templatesRepository = templatesRepository
         this.logger = logger
