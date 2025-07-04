@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import {NotificationSettingsRepository} from "../../repository/notificationSettingsRepository";
 import {EventRepository} from "../../repository/eventsRepository";
 import {NotificationTemplatesRepository, WebhookConfigRepository} from "../../repository/templatesRepository";
 import {NotificationTemplates} from "../../entities/notificationTemplates";
@@ -30,20 +29,17 @@ import {CustomError, CustomResponse} from "../../entities/events";
 
 export interface Handler {
     handle(event: Event, templates: (NotificationTemplates[] | WebhookConfig[]), setting: NotificationSettings, configMap: Map<string, boolean>, destinationMap: Map<string, boolean>): Promise<boolean>
-
     sendNotification(event: Event, sdk: any, template: string)
 }
 
 class NotificationService {
     private eventRepository: EventRepository
-    private notificationSettingsRepository: NotificationSettingsRepository
     private templatesRepository: NotificationTemplatesRepository
     private readonly handlers: Handler[]
     private logger: any
 
-    constructor(eventRepository: EventRepository, notificationSettingsRepository: NotificationSettingsRepository, templatesRepository: NotificationTemplatesRepository, handlers: Handler[], logger: any) {
+    constructor(eventRepository: EventRepository, templatesRepository: NotificationTemplatesRepository, handlers: Handler[], logger: any) {
         this.eventRepository = eventRepository
-        this.notificationSettingsRepository = notificationSettingsRepository
         this.handlers = handlers
         this.templatesRepository = templatesRepository
         this.logger = logger
@@ -54,7 +50,6 @@ class NotificationService {
                 throw new CustomError("Event is not valid for approval ", 400)
             }
 
-            this.logger.info('notificationSettingsRepository.findByEventSource')
             if (!event.payload.providers || event.payload.providers == 0) {
                 this.logger.info("no notification settings found for event " + event.correlationId);
                 throw new CustomError("no notification settings found for event", 400)
@@ -137,47 +132,7 @@ class NotificationService {
             }
         }
 
-    /**
-     * Main function to send notifications based on event type
-     * @param event The event to send notifications for
-     * @returns CustomResponse with status and message
-     */
-    public async sendNotification(event: Event): Promise<CustomResponse> {
-        try {
-            this.logger.info(`Processing notification for event type: ${event.eventTypeId}, correlationId: ${event.correlationId}`);
 
-            // Handle approval notifications
-            if (event.payload.providers && event.payload.providers.length > 0) {
-                this.logger.info(`Processing approval notification with ${event.payload.providers.length} providers`);
-                await this.sendApprovalNotification(event);
-                this.logger.info(`Approval notification sent successfully`);
-                return new CustomResponse("notification sent", 200);
-            }
-
-            // Handle scoop notification events
-            if (event.eventTypeId == EVENT_TYPE.ScoopNotification) {
-                this.logger.info(`Processing scoop notification event`);
-                return await this.handleScoopNotification(event);
-            }
-
-            // Handle regular notifications
-            this.logger.info(`Processing regular notification event`);
-            return await this.handleRegularNotification(event);
-        } catch (error: any) {
-            const errorMessage = error.message || 'Unknown error';
-            const errorStack = error.stack || '';
-            this.logger.error(`Error in sendNotification: ${errorMessage}\nStack: ${errorStack}`);
-
-            if (error instanceof CustomError) {
-                this.logger.error(`CustomError with status code: ${error.statusCode}`);
-                return new CustomResponse("", 0, error);
-            } else {
-                const customError = new CustomError(errorMessage, 400);
-                this.logger.error(`Converted to CustomError with status code: 400`);
-                return new CustomResponse("", 0, customError);
-            }
-        }
-    }
 
     /**
      * Enhanced function to send notifications with pre-provided notification settings
@@ -295,104 +250,6 @@ class NotificationService {
         }
     }
 
-    /**
-     * Handle regular notification events
-     * @param event The regular notification event
-     * @returns CustomResponse with status and message
-     */
-    private async handleRegularNotification(event: Event): Promise<CustomResponse> {
-        try {
-            this.logger.info(`Handling regular notification for event ID: ${event.correlationId}, type: ${event.eventTypeId}`);
-
-            // Validate event
-            if (!this.isValidEvent(event)) {
-                this.logger.error(`Invalid event: ${JSON.stringify({
-                    eventTypeId: event.eventTypeId,
-                    pipelineType: event.pipelineType,
-                    correlationId: event.correlationId,
-                    hasPayload: !!event.payload,
-                    hasBaseUrl: !!event.baseUrl
-                })}`);
-                throw new CustomError("Event is not valid", 400);
-            }
-            this.logger.info(`Event validation passed`);
-
-            // Get notification settings
-            this.logger.info(`Finding notification settings for event: ${event.correlationId}`);
-            const settingsResults = await this.findNotificationSettings(event);
-            if (!settingsResults || settingsResults.length == 0) {
-                this.logger.warn(`No notification settings found for event ${event.correlationId}`);
-                return new CustomResponse("", 0, new CustomError("no notification settings found for event", 404));
-            }
-            this.logger.info(`Found ${settingsResults.length} notification settings`);
-
-            // Process notification settings
-            this.logger.info(`Preparing notification maps`);
-            const { destinationMap, configsMap } = this.prepareNotificationMaps(settingsResults);
-
-            // Process each setting
-            this.logger.info(`Processing ${settingsResults.length} notification settings`);
-            for (let i = 0; i < settingsResults.length; i++) {
-                const setting = settingsResults[i];
-                this.logger.info(`Processing notification setting ${i+1}/${settingsResults.length}, ID: ${setting.id}`);
-                const result = await this.processNotificationSetting(event, setting, configsMap, destinationMap);
-                if (result.status === 0) {
-                    this.logger.error(`Error processing notification setting: ${result.error?.message}`);
-                    return result; // Return error if any
-                }
-            }
-
-            this.logger.info(`All notifications processed successfully`);
-            return new CustomResponse("notification sent", 200);
-        } catch (error: any) {
-            const errorMessage = error.message || 'Unknown error';
-            this.logger.error(`Error in handleRegularNotification: ${errorMessage}`);
-            if (error.stack) {
-                this.logger.error(`Stack trace: ${error.stack}`);
-            }
-            throw error; // Let the parent function handle the error
-        }
-    }
-
-    /**
-     * Find notification settings for an event
-     * @param event The event to find settings for
-     * @returns Array of notification settings
-     */
-    private async findNotificationSettings(event: Event): Promise<NotificationSettings[]> {
-        try {
-            this.logger.info(`Finding notification settings for event ID: ${event.correlationId}`);
-            this.logger.info(`Search parameters: pipelineType=${event.pipelineType}, pipelineId=${event.pipelineId}, ` +
-                `eventTypeId=${event.eventTypeId}, appId=${event.appId}, envId=${event.envId}, ` +
-                `teamId=${event.teamId}, clusterId=${event.clusterId}, isProdEnv=${event.isProdEnv}`);
-
-            if (event.envIdsForCiPipeline && event.envIdsForCiPipeline.length > 0) {
-                this.logger.info(`Additional envIdsForCiPipeline: ${event.envIdsForCiPipeline.join(', ')}`);
-            }
-
-            const settings = await this.notificationSettingsRepository.findByEventSource(
-                event.pipelineType,
-                event.pipelineId,
-                event.eventTypeId,
-                event.appId,
-                event.envId,
-                event.teamId,
-                event.clusterId,
-                event.isProdEnv,
-                event.envIdsForCiPipeline
-            );
-
-            this.logger.info(`Found ${settings ? settings.length : 0} notification settings`);
-            return settings;
-        } catch (error: any) {
-            const errorMessage = error.message || 'Unknown error';
-            this.logger.error(`Error in findNotificationSettings: ${errorMessage}`);
-            if (error.stack) {
-                this.logger.error(`Stack trace: ${error.stack}`);
-            }
-            throw error; // Let the parent function handle the error
-        }
-    }
 
     /**
      * Prepare notification maps for tracking destinations and configs

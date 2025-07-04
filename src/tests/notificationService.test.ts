@@ -226,7 +226,7 @@ describe('NotificationService', () => {
             }
             
             // Create instance with null dependencies (we're not using them in the test)
-            const service = new TestNotificationService(null, null, null, [], null);
+            const service = new TestNotificationService(null, null, [], null);
             
             // Test approval notification
             const approvalResult = await service.sendNotification(approvalEvent);
@@ -276,7 +276,7 @@ describe('NotificationService', () => {
                 }
             }
             
-            const service = new TestNotificationService(null, null, null, [], null);
+            const service = new TestNotificationService(null, null, [], null);
             
             // Test valid event
             expect(service.testIsValidEvent(sampleEvent)).to.be.true;

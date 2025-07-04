@@ -23,15 +23,15 @@ export const createNotificationRouter = (notificationService: NotificationServic
     const router = Router();
 
     router.post('/notify', async(req, res) => {
-        logger.info("notifications Received");
-        const response = await notificationService.sendNotification(req.body);
-        if (response.status != 0) {
-            res.status(response.status).json({message: response.message}).send();
-            successNotificationMetricsCounter.inc();
-        } else {
-            res.status(response.error.statusCode).json({message: response.error.message}).send();
-            failedNotificationMetricsCounter.inc();
-        }
+        logger.info("notifications Received - DEPRECATED ENDPOINT");
+        logger.warn("The /notify endpoint is deprecated. Please use /notify/v2 instead.");
+        
+        res.status(410).json({
+            message: "This endpoint is deprecated. Please use /notify/v2 instead.",
+            deprecated: true,
+            alternative: "/notify/v2"
+        }).send();
+        failedNotificationMetricsCounter.inc();
     });
 
     router.post('/notify/v2', async(req, res) => {
