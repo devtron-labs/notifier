@@ -50,7 +50,6 @@ class NotificationService {
                 throw new CustomError("Event is not valid for approval ", 400)
             }
 
-            this.logger.info('notificationSettingsRepository.findByEventSource')
             if (!event.payload.providers || event.payload.providers == 0) {
                 this.logger.info("no notification settings found for event " + event.correlationId);
                 throw new CustomError("no notification settings found for event", 400)
