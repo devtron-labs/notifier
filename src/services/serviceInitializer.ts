@@ -28,7 +28,6 @@ import { WebhookService } from '../destination/destinationHandlers/webhookHandle
 import { SESService } from '../destination/destinationHandlers/sesHandler';
 import { SMTPService } from '../destination/destinationHandlers/smtpHandler';
 import { EventRepository } from '../repository/eventsRepository';
-import { NotificationSettingsRepository } from '../repository/notificationSettingsRepository';
 import { NotificationTemplatesRepository } from '../repository/templatesRepository';
 import { logger } from '../config/logger';
 
@@ -42,7 +41,6 @@ export const initializeServices = () => {
     const smtpConfigRepository = new SMTPConfigRepository();
     const usersRepository = new UsersRepository();
     const eventRepository = new EventRepository();
-    const notificationSettingsRepository = new NotificationSettingsRepository();
     const notificationTemplatesRepository = new NotificationTemplatesRepository();
     
     // Initialize helpers
@@ -94,7 +92,6 @@ export const initializeServices = () => {
     // Create notification service
     const notificationService = new NotificationService(
         eventRepository,
-        notificationSettingsRepository,
         notificationTemplatesRepository,
         handlers,
         logger
