@@ -7,7 +7,7 @@ RUN yarn install
 COPY /.  .
 RUN  yarn build-ts
 
-FROM node:20-slim
+FROM node:24.11.0
 
 RUN groupadd -r devtron && useradd -r -g devtron devtron
 
