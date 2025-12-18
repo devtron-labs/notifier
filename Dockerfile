@@ -1,4 +1,4 @@
-FROM node AS builder
+FROM node:18 AS builder
 
 WORKDIR /app
 COPY package.json .
@@ -7,7 +7,7 @@ RUN yarn install
 COPY /.  .
 RUN  yarn build-ts
 
-FROM node:14.2.0
+FROM node:18-slim
 
 RUN groupadd -r devtron && useradd -r -g devtron devtron
 
