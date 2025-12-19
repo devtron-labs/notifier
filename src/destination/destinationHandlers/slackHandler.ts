@@ -148,13 +148,16 @@ export class SlackService implements Handler {
                 jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
             }else{
                 let parsedEvent = this.mh.parseEvent(event as Event, true);
-                this.logger.info('Parsed event data for Slack:', JSON.stringify(parsedEvent, null, 2));
+                console.log('=== SLACK DEBUG: Parsed event data ===');
+                console.log(JSON.stringify(parsedEvent, null, 2));
                 jsons = Mustache.render(template, parsedEvent);
             }
 
-            this.logger.info('Rendered Mustache template (before JSON parse):', jsons);
+            console.log('=== SLACK DEBUG: Rendered Mustache template ===');
+            console.log(jsons);
             let j = JSON.parse(jsons)
-            this.logger.info('Final Slack payload (after JSON parse):', JSON.stringify(j, null, 2));
+            console.log('=== SLACK DEBUG: Final Slack payload ===');
+            console.log(JSON.stringify(j, null, 2));
             const res = await sdk.send(
                 {
                     slack: j
@@ -163,6 +166,8 @@ export class SlackService implements Handler {
             return res;
         } catch (error) {
             this.logger.error('slack sendNotification error', error)
+            console.log('=== SLACK DEBUG: Error details ===');
+            console.log(error);
             throw new CustomError("Unable to send slack notification",500);
         }
     }
