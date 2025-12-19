@@ -241,9 +241,106 @@ export async function testSendToSlack() {
     }
 }
 
+/**
+ * Test the SQL template from approval-templates-fixed.sql
+ */
+export function testSQLTemplate() {
+    console.log('\n=== TESTING SQL TEMPLATE (Image Approval) ===\n');
+
+    const sqlTemplate = `{
+  "text": "🛎️ Image approval requested for {{appName}}",
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "🛎️ Image Approval Request"
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Application:*\\n{{appName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Environment:*\\n{{envName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Pipeline:*\\n{{pipelineName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Requested by:*\\n{{triggeredBy}}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Image Tag:* \`{{imageTag}}\`\\n*Time:* <t:{{eventTime}}:f>{{#comment}}\\n*Comment:* {{comment}}{{/comment}}{{#tags}}\\n*Tags:* {{tags}}{{/tags}}"
+      }
+    },
+    {
+      "type": "actions",
+      "elements": [
+        {
+          "type": "button",
+          "text": {
+            "type": "plain_text",
+            "text": "View Request"
+          },
+          "url": "{{{imageApprovalLink}}}",
+          "style": "primary"
+        }
+      ]
+    }
+  ]
+}`;
+
+    const mh = new MustacheHelper();
+    const parsedEvent = mh.parseEvent(approvalEvent, true);
+
+    console.log('Rendering SQL template...');
+    const rendered = Mustache.render(sqlTemplate, parsedEvent);
+
+    try {
+        const payload = JSON.parse(rendered);
+        console.log('✅ SQL template renders valid JSON');
+
+        const validation = validateSlackBlockKit(payload);
+        if (validation.isValid) {
+            console.log('✅ SQL template passes Slack validation');
+            return payload;
+        } else {
+            console.log('❌ SQL template validation failed:');
+            validation.errors.forEach(err => console.log(`  - ${err}`));
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ SQL template produces invalid JSON:', error);
+        return false;
+    }
+}
+
 // Run tests if executed directly
 if (require.main === module) {
     console.log('Running Approval Template Tests...\n');
+
+    // Test the SQL template first
+    const sqlPayload = testSQLTemplate();
+
+    if (sqlPayload) {
+        console.log('\n✅ SQL template is valid and ready to use!\n');
+    } else {
+        console.log('\n❌ SQL template has issues that need to be fixed!\n');
+    }
+
+    // Then test sending to Slack
     testSendToSlack().then(() => {
         console.log('\n=== Tests Complete ===');
     });
