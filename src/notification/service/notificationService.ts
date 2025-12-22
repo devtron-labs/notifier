@@ -76,7 +76,13 @@ class NotificationService {
                 settings.pipeline_id = event.pipelineId
                 settings.event_type_id = event.eventTypeId
                 for (let h of this.handlers) {
+                    // Handle email notifications (SES and SMTP)
                     if ((h instanceof SESService) || (h instanceof SMTPService)) {
+                        await h.handle(event, templateResults, settings, configsMap, destinationMap)
+                    }
+                    // Handle Slack notifications for approval events
+                    if (h instanceof SlackService) {
+                        this.logger.info("Processing Slack approval notification");
                         await h.handle(event, templateResults, settings, configsMap, destinationMap)
                     }
                 }}
@@ -145,12 +151,19 @@ class NotificationService {
             this.logger.info(`Processing notification V2 for event type: ${event.eventTypeId}, correlationId: ${event.correlationId}`);
             this.logger.info(`Using ${notificationSettings.length} pre-provided notification settings`);
 
-            // Handle approval notifications
-            if (event.payload.providers && event.payload.providers.length > 0) {
-                this.logger.info(`Processing approval notification with ${event.payload.providers.length} providers`);
-                await this.sendApprovalNotification(event);
-                this.logger.info(`Approval notification sent successfully`);
-                return new CustomResponse("notification sent", 200);
+            // Handle approval notifications (eventTypeId 4 = Approval, 5 = ConfigApproval)
+            // Approval events use event.payload.providers instead of notificationSettings
+            if (event.eventTypeId === EVENT_TYPE.Approval || event.eventTypeId === EVENT_TYPE.ConfigApproval) {
+                this.logger.info(`Detected approval event type: ${event.eventTypeId}`);
+                if (event.payload.providers && event.payload.providers.length > 0) {
+                    this.logger.info(`Processing approval notification with ${event.payload.providers.length} providers`);
+                    await this.sendApprovalNotification(event);
+                    this.logger.info(`Approval notification sent successfully`);
+                    return new CustomResponse("notification sent", 200);
+                } else {
+                    this.logger.warn(`Approval event received but no providers found in payload for event ${event.correlationId}`);
+                    return new CustomResponse("", 0, new CustomError("no providers found in payload for approval event", 400));
+                }
             }
 
             // Handle scoop notification events

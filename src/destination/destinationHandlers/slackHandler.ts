@@ -150,7 +150,6 @@ export class SlackService implements Handler {
                 let parsedEvent = this.mh.parseEvent(event as Event, true);
                 jsons = Mustache.render(template, parsedEvent);
             }
-
             let j = JSON.parse(jsons)
             const res = await sdk.send(
                 {
