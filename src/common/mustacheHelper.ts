@@ -83,6 +83,11 @@ export class MustacheHelper {
             ? date.unix()
             : date.format('dddd, MMMM Do YYYY hh:mm A [GMT]Z');
 
+        // For Slack, create a formatted timestamp string with the special Slack format
+        const slackTimestamp = isSlackNotification
+            ? `<t:${date.unix()}:f>`
+            : undefined;
+
         let baseURL = event.baseUrl;
 
         // Handle approval events FIRST (before checking pipelineType)
@@ -97,6 +102,7 @@ export class MustacheHelper {
 
             return {
                 eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
                 triggeredBy: event.payload.triggeredBy || "NA",
                 appName: event.payload.appName || "NA",
                 envName: event.payload.envName || "NA",
@@ -124,6 +130,7 @@ export class MustacheHelper {
            }
             return {
                 eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
                 triggeredBy: event.payload.triggeredBy || "NA",
                 appName: event.payload.appName || "NA",
                 envName: envName,
@@ -179,6 +186,7 @@ export class MustacheHelper {
             if (baseURL && event.payload.buildHistoryLink) buildHistoryLink = `${baseURL}${event.payload.buildHistoryLink}`;
             const parsedEvent:ParsedCIEvent = {
                 eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
                 triggeredBy: event.payload.triggeredBy || "NA",
                 appName: event.payload.appName || "NA",
                 pipelineName: event.payload.pipelineName || "NA",
@@ -200,6 +208,7 @@ export class MustacheHelper {
 
             return {
                 eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
                 triggeredBy: event.payload.triggeredBy || "NA",
                 appName: event.payload.appName || "NA",
                 envName: event.payload.envName || "NA",
@@ -229,6 +238,7 @@ export class MustacheHelper {
 
             return {
                 eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
                 triggeredBy: event.payload.triggeredBy || "NA",
                 appName: event.payload.appName || "NA",
                 envName: event.payload.envName || envName,
@@ -433,6 +443,7 @@ export class WebhookData {
 
 interface ParseArtifactPromotionEvent {
     eventTime: number | string;
+    slackTimestamp?: string;
     triggeredBy: string;
     appName: string;
     envName: string;
