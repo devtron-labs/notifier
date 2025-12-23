@@ -84,8 +84,9 @@ export class MustacheHelper {
             : date.format('dddd, MMMM Do YYYY hh:mm A [GMT]Z');
 
         // For Slack, create a formatted timestamp string with the special Slack format
+        // Using <!date^TIMESTAMP^{date_long} {time}> format which matches CD templates
         const slackTimestamp = isSlackNotification
-            ? `<t:${date.unix()}:f>`
+            ? `<!date^${date.unix()}^{date_long} {time} | "-">`
             : undefined;
 
         let baseURL = event.baseUrl;
