@@ -87,7 +87,7 @@ export class MustacheHelper {
         // Using <!date^TIMESTAMP^{date_long} {time}> format which matches CD templates
         const slackTimestamp = isSlackNotification
             ? `<!date^${date.unix()}^{date_long} {time} | "-">`
-            : undefined;
+            : null;
 
         let baseURL = event.baseUrl;
 
