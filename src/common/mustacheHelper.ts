@@ -156,7 +156,7 @@ export class MustacheHelper {
                     let _isMergedTypeWebhook = _webhookDataInRequest.EventActionType == 'merged';
                     let _webhookData : WebhookData = {
                         mergedType : _isMergedTypeWebhook,
-                        data: this.modifyWebhookData(_webhookDataInRequest.Data, ci.url, _isMergedTypeWebhook)
+                        data: this.modifyWebhookData(_webhookDataInRequest.data, ci.url, _isMergedTypeWebhook)
                     }
                     _material = {
                         webhookType : true,
