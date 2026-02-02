@@ -103,6 +103,46 @@ export interface ParseConfigApprovalEvent {
     approvalLink?: string;
 }
 
+export interface ParseDeploymentApprovedEvent {
+    eventTime: number | string;
+    slackTimestamp?: string;
+    triggeredBy: string;
+    appName: string;
+    pipelineName: string;
+    envName: string;
+    tags?: string[];
+    comment?: string;
+    imageApprovalLink?: string;
+    imageTag: string;
+    dockerImageUrl?: string;
+}
+
+export interface ParseConfigApprovedEvent {
+    eventTime: number | string;
+    slackTimestamp?: string;
+    triggeredBy: string;
+    appName: string;
+    envName: string;
+    protectConfigComment?: string[];
+    protectConfigFileType: string;
+    protectConfigFileName: string;
+    protectConfigLink?: string;
+}
+
+export interface ParsePromotionApprovedEvent {
+    eventTime: number | string;
+    slackTimestamp?: string;
+    triggeredBy: string;
+    appName: string;
+    envName: string;
+    imageTagNames?: string[];
+    imageComment?: string;
+    artifactPromotionRequestViewLink?: string;
+    promotionArtifactSource?: string;
+    imageTag: string;
+    dockerImageUrl?: string;
+}
+
 export interface ParsedScoopNotification {
     heading: string;
     kind: string;
@@ -153,6 +193,9 @@ export enum EVENT_TYPE {
     ImagePromotion = 7,
     ImageScan = 8,
     ScoopNotification = 9,
+    DeploymentApproved = 10,
+    ConfigApproved = 11,
+    PromotionApproved = 12,
 }
 
 export enum ENV_TYPE_INT{
