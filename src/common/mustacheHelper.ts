@@ -93,13 +93,14 @@ export class MustacheHelper {
 
         // Handle approval events FIRST (before checking pipelineType)
         if (event.eventTypeId===EVENT_TYPE.Approval){
-            let  imageTagNames,imageComment,imageLink,approvalLink;
+            let  imageTagNames,imageComment,imageLink,approvalLink,approvalAction;
             let index = -1;
             if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
             if (event.payload.imageTagNames) imageTagNames = event.payload.imageTagNames;
             if (event.payload.imageComment) imageComment = event.payload.imageComment;
             if (baseURL && event.payload.imageApprovalLink) imageLink =`${baseURL}${event.payload.imageApprovalLink}`;
             if (baseURL && event.payload.approvalLink) approvalLink = `${baseURL}${event.payload.approvalLink}`;
+            if (event.payload.approvalAction) approvalAction = event.payload.approvalAction;
 
             return {
                 eventTime: timestamp,
@@ -113,16 +114,18 @@ export class MustacheHelper {
                 tags:imageTagNames,
                 imageApprovalLink:imageLink,
                 approvalLink:approvalLink,
+                approvalAction:approvalAction,
             }
         }
 
         if (event.eventTypeId===EVENT_TYPE.ConfigApproval){
-            let  protectConfigFileType,protectConfigFileName,protectConfigComment,protectConfigLink,envName,approvalLink;
+            let  protectConfigFileType,protectConfigFileName,protectConfigComment,protectConfigLink,envName,approvalLink,approvalAction;
             if (event.payload.protectConfigFileType) protectConfigFileType = event.payload.protectConfigFileType;
             if (event.payload.protectConfigFileName) protectConfigFileName = event.payload.protectConfigFileName;
             if (event.payload.protectConfigComment) protectConfigComment = event.payload.protectConfigComment.split("\n");
             if (baseURL && event.payload.protectConfigLink) protectConfigLink =`${baseURL}${event.payload.protectConfigLink}`;
             if (baseURL && event.payload.approvalLink) approvalLink = `${baseURL}${event.payload.approvalLink}`;
+            if (event.payload.approvalAction) approvalAction = event.payload.approvalAction;
            if (!event.payload.envName){
             envName="Base configuration"
            }
@@ -140,6 +143,7 @@ export class MustacheHelper {
                 protectConfigComment:protectConfigComment,
                 protectConfigLink:protectConfigLink,
                 approvalLink:approvalLink,
+                approvalAction:approvalAction,
             }
         }
 
