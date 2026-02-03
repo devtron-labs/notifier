@@ -26,6 +26,7 @@ import {UsersRepository} from "../../repository/usersRepository";
 import { SMTPConfigRepository } from '../../repository/smtpConfigRepository';
 import { MustacheHelper } from '../../common/mustacheHelper';
 import {CustomError} from "../../entities/events";
+import {EVENT_TYPE} from "../../common/types";
 
 //https://github.com/notifme/notifme-sdk/blob/master/src/models/notification-request.js#L132
 export class SMTPService implements Handler {
