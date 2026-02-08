@@ -16,6 +16,7 @@
 
 import { Event } from '../notification/service/notificationService';
 import moment from 'moment-timezone';
+import e, { json } from 'express';
 import {EVENT_TYPE, ParsedScoopNotification} from "./types";
 import { ciMaterials ,ParsedCIEvent,vulnerability,severityCount,WebhookParsedEvent,ParseApprovalEvent,ParseConfigApprovalEvent,ParsedCDEvent,ParseDeploymentApprovedEvent,ParseConfigApprovedEvent,ParsePromotionApprovedEvent} from './types';
 import Mustache from "mustache";
@@ -25,51 +26,6 @@ export class MustacheHelper {
         DEPLOY: "Deployment",
         PRE: "Pre-deployment",
         POST: "Post-deployment",
-    }
-
-    /**
-     * Create a custom context object with Mustache lambda helper for equals
-     * This enables conditional rendering like: {{#equals approvalAction "requested"}}...{{/equals}}
-     */
-    public createRenderContext(data: any): any {
-        return {
-            ...data,
-            // Lambda function for equals comparison
-            equals: function(this: any) {
-                return (text: string) => {
-                    // Parse the comparison from text like 'approvalAction "requested"'
-                    // Extract the value to compare against (the quoted part)
-                    const match = text.match(/"([^"]+)"/);
-                    if (!match) {
-                        return '';
-                    }
-                    const expectedValue = match[1];
-
-                    // Get the field name (everything before the first space)
-                    const fieldName = text.split(' ')[0];
-                    const contextValue = (this as any)[fieldName];
-
-                    // Render content if values match
-                    if (contextValue === expectedValue) {
-                        return text;
-                    }
-                    return '';
-                };
-            }
-        };
-    }
-
-    constructor() {
-        // Register custom Mustache helpers for template rendering
-        this.registerMustacheHelpers();
-    }
-
-    /**
-     * Register custom Mustache helpers for template rendering
-     */
-    private registerMustacheHelpers(): void {
-        // Mustache default tags configuration
-        Mustache.tags = ['{{', '}}'];
     }
 
     createGitCommitUrl(url: string, revision: string): string {
@@ -303,7 +259,7 @@ export class MustacheHelper {
                     commitLink: "#",
                 }
             }
-       }) : [];
+        }) : [];
     }
 
         if (event.pipelineType === "CI") {
@@ -560,6 +516,7 @@ export class MustacheHelper {
     }
 }
 
+;
 export class WebhookData {
     mergedType : boolean;   // merged/non-merged
     data: Map<string, string>;
