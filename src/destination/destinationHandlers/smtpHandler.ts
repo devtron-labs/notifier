@@ -223,14 +223,20 @@ export class SMTPService implements Handler {
                event.eventTypeId === EVENT_TYPE.DeploymentApproved || event.eventTypeId === EVENT_TYPE.PromotionApproved){
                 let commentDisplayStyle = (event.payload.imageComment === "") ? 'none' : 'inline';
                 let tagDisplayStyle = (event.payload.imageTagNames === null) ? 'none' : 'inline';
-                json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle ,tagDisplayStyle});
+                // Add custom context for template helpers
+                const renderContext = this.mh.createRenderContext({ ...parsedEvent, commentDisplayStyle, tagDisplayStyle });
+                json = Mustache.render(template, renderContext);
             }
             // Handle ConfigApproval and ConfigApproved events
             else if(event.eventTypeId===5 || event.eventTypeId === EVENT_TYPE.ConfigApproved){
                 let commentDisplayStyle = (event.payload.protectConfigComment === "") ? 'none' : 'inline';
-                json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle });
+                // Add custom context for template helpers
+                const renderContext = this.mh.createRenderContext({ ...parsedEvent, commentDisplayStyle });
+                json = Mustache.render(template, renderContext);
             }else{
-                json = Mustache.render(template, parsedEvent)
+                // Add custom context for template helpers
+                const renderContext = this.mh.createRenderContext(parsedEvent);
+                json = Mustache.render(template, renderContext)
             }
             const res = await sdk.send(
                 {

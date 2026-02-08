@@ -148,7 +148,9 @@ export class SlackService implements Handler {
                 jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
             }else{
                 let parsedEvent = this.mh.parseEvent(event as Event, true);
-                jsons = Mustache.render(template, parsedEvent);
+                // Add custom context for template helpers
+                const renderContext = this.mh.createRenderContext(parsedEvent);
+                jsons = Mustache.render(template, renderContext);
             }
             let j = JSON.parse(jsons)
             const res = await sdk.send(
