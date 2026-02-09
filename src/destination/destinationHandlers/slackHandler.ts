@@ -145,10 +145,12 @@ export class SlackService implements Handler {
             if (event.eventTypeId == EVENT_TYPE.ScoopNotification){
                 const date = moment(event.eventTime);
                 event.payload.scoopNotificationConfig.data.interceptedAt = date.unix();
-                jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
+                const safeTemplate = this.preprocessEqualsApproval(template);
+                jsons = Mustache.render(safeTemplate, event.payload.scoopNotificationConfig.data);
             }else{
                 let parsedEvent = this.mh.parseEvent(event as Event, true);
-                jsons = Mustache.render(template, parsedEvent);
+                const safeTemplate = this.preprocessEqualsApproval(template);
+                jsons = Mustache.render(safeTemplate, parsedEvent);
             }
             let j = JSON.parse(jsons)
             const res = await sdk.send(
@@ -161,6 +163,49 @@ export class SlackService implements Handler {
             this.logger.error('slack sendNotification error', error)
             throw new CustomError("Unable to send slack notification",500);
         }
+    }
+
+    // Preprocess templates that use a non-standard Mustache helper syntax like:
+    // {{#equals approvalAction "requested"}} ... {{/equals}}
+    // We translate them into boolean section checks exposed by MustacheHelper:
+    // {{#isApprovalRequested}} ... {{/isApprovalRequested}}
+    private preprocessEqualsApproval(template: string): string {
+        const mappings: Record<string, { open: RegExp; name: string }>[] = [
+            { requested: { open: /\{\{#equals\s+approvalAction\s+\"requested\"\}\}/g, name: 'isApprovalRequested' } } as any,
+            { approved: { open: /\{\{#equals\s+approvalAction\s+\"approved\"\}\}/g, name: 'isApprovalApproved' } } as any,
+            { cancelled: { open: /\{\{#equals\s+approvalAction\s+\"cancelled\"\}\}/g, name: 'isApprovalCancelled' } } as any,
+        ] as unknown as Record<string, { open: RegExp; name: string }>[];
+
+        let output = template;
+        // For each variant, iteratively replace the closest closing tag
+        const variants: { open: RegExp; name: string }[] = [
+            { open: /\{\{#equals\s+approvalAction\s+\"requested\"\}\}/g, name: 'isApprovalRequested' },
+            { open: /\{\{#equals\s+approvalAction\s+\"approved\"\}\}/g, name: 'isApprovalApproved' },
+            { open: /\{\{#equals\s+approvalAction\s+\"cancelled\"\}\}/g, name: 'isApprovalCancelled' },
+        ];
+
+        for (const v of variants) {
+            // Reset lastIndex just in case
+            v.open.lastIndex = 0;
+            let match: RegExpExecArray | null;
+            while ((match = v.open.exec(output)) !== null) {
+                const startIdx = match.index;
+                const before = output.substring(0, startIdx);
+                const afterOpen = output.substring(startIdx + match[0].length);
+                const closeIdx = afterOpen.indexOf('{{/equals}}');
+                if (closeIdx === -1) {
+                    // No close found; leave as is to surface a clear error later
+                    continue;
+                }
+                const between = afterOpen.substring(0, closeIdx);
+                const afterClose = afterOpen.substring(closeIdx + '{{/equals}}'.length);
+                const replaced = `{{#${v.name}}}` + between + `{{/${v.name}}}`;
+                output = before + replaced + afterClose;
+                // Move regex pointer forward to avoid infinite loops
+                v.open.lastIndex = (before + replaced).length;
+            }
+        }
+        return output;
     }
 
     private async saveNotificationEventSuccessLog(result: any, event: Event, p: any, setting: NotificationSettings) {

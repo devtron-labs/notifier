@@ -115,6 +115,9 @@ export class MustacheHelper {
                 imageApprovalLink:imageLink,
                 approvalLink:approvalLink,
                 approvalAction:approvalAction,
+                isApprovalRequested: approvalAction === 'requested',
+                isApprovalApproved: approvalAction === 'approved',
+                isApprovalCancelled: approvalAction === 'cancelled',
             }
         }
 
@@ -144,6 +147,9 @@ export class MustacheHelper {
                 protectConfigLink:protectConfigLink,
                 approvalLink:approvalLink,
                 approvalAction:approvalAction,
+                isApprovalRequested: approvalAction === 'requested',
+                isApprovalApproved: approvalAction === 'approved',
+                isApprovalCancelled: approvalAction === 'cancelled',
             }
         }
 

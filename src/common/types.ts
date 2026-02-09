@@ -89,7 +89,9 @@ export interface ParseApprovalEvent {
     imageTag: string;
     approvalLink?: string;
     approvalAction?: string; // "requested", "approved", or "cancelled"
-
+    isApprovalRequested?: boolean;
+    isApprovalApproved?: boolean;
+    isApprovalCancelled?: boolean;
 }
 export interface ParseConfigApprovalEvent {
     eventTime: number | string;
@@ -103,6 +105,9 @@ export interface ParseConfigApprovalEvent {
     protectConfigLink?: string;
     approvalLink?: string;
     approvalAction?: string; // "requested", "approved", or "cancelled"
+    isApprovalRequested?: boolean;
+    isApprovalApproved?: boolean;
+    isApprovalCancelled?: boolean;
 }
 
 export interface ParseDeploymentApprovedEvent {
