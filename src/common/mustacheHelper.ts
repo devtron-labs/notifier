@@ -79,8 +79,11 @@ export class MustacheHelper {
         }
 
         const date = moment(event.eventTime);
+        // For both Slack and email, use a human-readable format
+        // Slack format: "Monday, 15 December 6:38 PM"
+        // Email format: "Monday, December 15th 2025 06:38 PM GMT+0530"
         const timestamp = isSlackNotification
-            ? date.unix()
+            ? date.format('dddd, D MMMM h:mm A')
             : date.format('dddd, MMMM Do YYYY hh:mm A [GMT]Z');
 
         // For Slack, create a formatted timestamp string with the special Slack format
