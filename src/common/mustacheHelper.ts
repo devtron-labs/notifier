@@ -102,6 +102,11 @@ export class MustacheHelper {
             if (baseURL && event.payload.approvalLink) approvalLink = `${baseURL}${event.payload.approvalLink}`;
             if (event.payload.approvalAction) approvalAction = event.payload.approvalAction;
 
+            // Add boolean flags for Mustache conditional rendering
+            const isRequested = !approvalAction || approvalAction === "requested";
+            const isApproved = approvalAction === "approved";
+            const isCancelled = approvalAction === "cancelled";
+
             return {
                 eventTime: timestamp,
                 slackTimestamp: slackTimestamp,
@@ -115,6 +120,10 @@ export class MustacheHelper {
                 imageApprovalLink:imageLink,
                 approvalLink:approvalLink,
                 approvalAction:approvalAction,
+                // Boolean flags for template conditionals
+                isApprovalRequested: isRequested,
+                isApprovalApproved: isApproved,
+                isApprovalCancelled: isCancelled,
             }
         }
 
@@ -132,6 +141,12 @@ export class MustacheHelper {
            else{
             envName=event.payload.envName
            }
+            
+            // Add boolean flags for Mustache conditional rendering
+            const isRequested = !approvalAction || approvalAction === "requested";
+            const isApproved = approvalAction === "approved";
+            const isCancelled = approvalAction === "cancelled";
+
             return {
                 eventTime: timestamp,
                 slackTimestamp: slackTimestamp,
@@ -144,6 +159,10 @@ export class MustacheHelper {
                 protectConfigLink:protectConfigLink,
                 approvalLink:approvalLink,
                 approvalAction:approvalAction,
+                // Boolean flags for template conditionals
+                isApprovalRequested: isRequested,
+                isApprovalApproved: isApproved,
+                isApprovalCancelled: isCancelled,
             }
         }
 

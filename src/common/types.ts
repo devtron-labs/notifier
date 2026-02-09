@@ -89,6 +89,10 @@ export interface ParseApprovalEvent {
     imageTag: string;
     approvalLink?: string;
     approvalAction?: string; // "requested", "approved", or "cancelled"
+    // Boolean flags for Mustache template conditionals
+    isApprovalRequested?: boolean;
+    isApprovalApproved?: boolean;
+    isApprovalCancelled?: boolean;
 
 }
 export interface ParseConfigApprovalEvent {
@@ -103,6 +107,10 @@ export interface ParseConfigApprovalEvent {
     protectConfigLink?: string;
     approvalLink?: string;
     approvalAction?: string; // "requested", "approved", or "cancelled"
+    // Boolean flags for Mustache template conditionals
+    isApprovalRequested?: boolean;
+    isApprovalApproved?: boolean;
+    isApprovalCancelled?: boolean;
 }
 
 export interface ParseDeploymentApprovedEvent {
