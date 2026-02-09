@@ -2,7 +2,8 @@ FROM node:24 AS builder
 
 WORKDIR /app
 COPY package.json .
-RUN yarn install
+RUN yarn config set registry https://registry.npmjs.org/ \
+    && yarn install
 
 COPY /.  .
 RUN  yarn build-ts
