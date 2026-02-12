@@ -18,7 +18,7 @@ import { Event } from '../notification/service/notificationService';
 import moment from 'moment-timezone';
 import e, { json } from 'express';
 import {EVENT_TYPE, ParsedScoopNotification} from "./types";
-import { ciMaterials ,ParsedCIEvent,vulnerability,severityCount,WebhookParsedEvent,ParseApprovalEvent,ParseConfigApprovalEvent,ParsedCDEvent,ParseDeploymentApprovedEvent,ParseConfigApprovedEvent,ParsePromotionApprovedEvent} from './types';
+import { ciMaterials ,ParsedCIEvent,vulnerability,severityCount,WebhookParsedEvent,ParseApprovalEvent,ParseConfigApprovalEvent,ParsedCDEvent,ParseDeploymentApprovedEvent,ParseConfigApprovedEvent,ParsePromotionApprovedEvent,ParseDeploymentCancelledEvent,ParseConfigCancelledEvent,ParsePromotionCancelledEvent} from './types';
 import Mustache from "mustache";
 import {getCommitsFromGitTriggers} from "./getCommitsFromGitTriggers";
 export class MustacheHelper {
@@ -73,7 +73,7 @@ export class MustacheHelper {
         return parsedScoopNotification
     }
 
-    parseEvent(event: Event, isSlackNotification?: boolean): ParsedCIEvent | ParsedCDEvent | ParseApprovalEvent | ParseConfigApprovalEvent | ParseArtifactPromotionEvent | ParsedScoopNotification | ParseDeploymentApprovedEvent | ParseConfigApprovedEvent | ParsePromotionApprovedEvent{
+    parseEvent(event: Event, isSlackNotification?: boolean): ParsedCIEvent | ParsedCDEvent | ParseApprovalEvent | ParseConfigApprovalEvent | ParseArtifactPromotionEvent | ParsedScoopNotification | ParseDeploymentApprovedEvent | ParseConfigApprovedEvent | ParsePromotionApprovedEvent | ParseDeploymentCancelledEvent | ParseConfigCancelledEvent | ParsePromotionCancelledEvent{
         if(event.eventTypeId===EVENT_TYPE.ScoopNotification){
             return this.parseScoopNotification(event)
         }
@@ -245,10 +245,80 @@ export class MustacheHelper {
             }
         }
 
+        // Handle DeploymentCancelled event
+        if (event.eventTypeId===EVENT_TYPE.DeploymentCancelled){
+            let imageTagNames, imageComment;
+            let index = -1;
+            if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
+            if (event.payload.imageTagNames) imageTagNames = event.payload.imageTagNames;
+            if (event.payload.imageComment) imageComment = event.payload.imageComment;
+
+            return {
+                eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
+                triggeredBy: event.payload.triggeredBy || "NA",
+                appName: event.payload.appName || "NA",
+                envName: event.payload.envName || "NA",
+                pipelineName: event.payload.pipelineName || "NA",
+                imageTag: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
+                comment: imageComment,
+                tags: imageTagNames,
+                dockerImageUrl: event.payload.dockerImageUrl,
+            }
+        }
+
+        // Handle ConfigCancelled event
+        if (event.eventTypeId===EVENT_TYPE.ConfigCancelled){
+            let protectConfigFileType, protectConfigFileName, protectConfigComment, envName;
+            if (event.payload.protectConfigFileType) protectConfigFileType = event.payload.protectConfigFileType;
+            if (event.payload.protectConfigFileName) protectConfigFileName = event.payload.protectConfigFileName;
+            if (event.payload.protectConfigComment) protectConfigComment = event.payload.protectConfigComment.split("\n");
+            if (!event.payload.envName){
+                envName = "Base configuration"
+            }
+            else{
+                envName = event.payload.envName
+            }
+            return {
+                eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
+                triggeredBy: event.payload.triggeredBy || "NA",
+                appName: event.payload.appName || "NA",
+                envName: envName,
+                protectConfigFileType: protectConfigFileType,
+                protectConfigFileName: protectConfigFileName,
+                protectConfigComment: protectConfigComment,
+            }
+        }
+
+        // Handle PromotionCancelled event
+        if (event.eventTypeId===EVENT_TYPE.PromotionCancelled){
+            let imageTagNames, imageComment, imagePromotionSource, envName;
+            let index = -1;
+            if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
+            if (event.payload.imageTagNames) imageTagNames = event.payload.imageTagNames;
+            if (event.payload.imageComment) imageComment = event.payload.imageComment;
+            if (event.payload.promotionArtifactSource) imagePromotionSource = event.payload.promotionArtifactSource;
+            if (event.payload.envName) envName = event.payload.envName;
+
+            return {
+                eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
+                triggeredBy: event.payload.triggeredBy || "NA",
+                appName: event.payload.appName || "NA",
+                envName: event.payload.envName || envName,
+                imageTag: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
+                imageTagNames: imageTagNames,
+                imageComment: imageComment,
+                promotionArtifactSource: imagePromotionSource,
+                dockerImageUrl: event.payload.dockerImageUrl,
+            }
+        }
+
         // Now handle CI/CD events (which need material parsing)
         let material = event.payload.material;
         let ciMaterials;
-        if (event.eventTypeId!==EVENT_TYPE.Approval && event.eventTypeId!==EVENT_TYPE.ConfigApproval && event.eventTypeId!=EVENT_TYPE.ImagePromotion && event.eventTypeId!==EVENT_TYPE.DeploymentApproved && event.eventTypeId!==EVENT_TYPE.ConfigApproved && event.eventTypeId!==EVENT_TYPE.PromotionApproved){
+        if (event.eventTypeId!==EVENT_TYPE.Approval && event.eventTypeId!==EVENT_TYPE.ConfigApproval && event.eventTypeId!=EVENT_TYPE.ImagePromotion && event.eventTypeId!==EVENT_TYPE.DeploymentApproved && event.eventTypeId!==EVENT_TYPE.ConfigApproved && event.eventTypeId!==EVENT_TYPE.PromotionApproved && event.eventTypeId!==EVENT_TYPE.DeploymentCancelled && event.eventTypeId!==EVENT_TYPE.ConfigCancelled && event.eventTypeId!==EVENT_TYPE.PromotionCancelled){
         ciMaterials = material.ciMaterials ? material.ciMaterials.map((ci) => {
             if (material && material.gitTriggers && material.gitTriggers[ci.id]) {
                 let trigger = material.gitTriggers[ci.id];
