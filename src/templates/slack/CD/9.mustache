@@ -1,0 +1,54 @@
+{
+  "text": "🛎️ Change in resource intercepted | Resource {{action}} | Resource: {{kind}}/{{resourceName}}",
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "{{heading}}"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*{{kind}}/{{resourceName}}*\n{{interceptedAt}}"
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Cluster:*\n{{clusterName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Namespace:*\n{{namespace}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Intercepted by:*\n{{watcherName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Runbook:*\n{{pipelineName}}"
+        }
+      ]
+    },
+    {
+      "type": "actions",
+      "elements": [
+        {
+          "type": "button",
+          "text": {
+            "type": "plain_text",
+            "text": "View Resource Manifest"
+          },
+          "url": "{{{viewResourceManifestLink}}}",
+          "style": "primary"
+        }
+      ]
+    }
+  ]
+}
