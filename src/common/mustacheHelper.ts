@@ -315,6 +315,35 @@ export class MustacheHelper {
             }
         }
 
+        // Handle ImagePromotion event (before CI/CD material parsing, since it has pipelineType=CD
+        // but needs promotion-specific variables instead of the generic CD template)
+        if (event.eventTypeId === EVENT_TYPE.ImagePromotion) {
+            let imageLink, approvalLink;
+            let imageTagNames = event.payload?.imageTagNames;
+            let imageComment = event.payload?.imageComment;
+            let imagePromotionSource = event.payload?.promotionArtifactSource;
+            let envName = event.payload?.envName;
+            let index = -1;
+            if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
+            if (baseURL && event.payload.imageApprovalLink) imageLink = `${baseURL}${event.payload.imageApprovalLink}`;
+            if (baseURL && event.payload.approvalLink) approvalLink = `${baseURL}${event.payload.approvalLink}`;
+
+            return {
+                eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
+                triggeredBy: event.payload.triggeredBy || "NA",
+                appName: event.payload.appName || "NA",
+                envName: event.payload.envName || envName,
+                pipelineName: event.payload.pipelineName || "NA",
+                imageTag: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
+                tags: imageTagNames,
+                comment: imageComment,
+                promotionArtifactSource: imagePromotionSource,
+                imageApprovalLink: imageLink,
+                approvalLink: approvalLink,
+            }
+        }
+
         // Now handle CI/CD events (which need material parsing)
         let material = event.payload.material;
         let ciMaterials;
@@ -397,33 +426,7 @@ export class MustacheHelper {
                 triggeredWithoutApprovalStyle: event.isDeploymentDoneWithoutApproval ? 'block' : 'none'
             }
         }
-        // Note: Approval and ConfigApproval events are now handled at the top of this function
-        else if (event.eventTypeId === EVENT_TYPE.ImagePromotion ){
-
-            let artifactPromotionRequestViewLink : string   = `${baseURL}${event.payload?.artifactPromotionRequestViewLink}`
-            let artifactPromotionApprovalLink = `${baseURL}${event.payload?.artifactPromotionApprovalLink}`
-            let imageTagNames = event.payload?.imageTagNames
-            let imageComment = event.payload?.imageComment
-            let imagePromotionSource = event.payload?.promotionArtifactSource
-            let envName  = event.payload?.envName
-            let index = -1;
-            if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
-
-            return {
-                eventTime: timestamp,
-                slackTimestamp: slackTimestamp,
-                triggeredBy: event.payload.triggeredBy || "NA",
-                appName: event.payload.appName || "NA",
-                envName: event.payload.envName || envName,
-                imageTag: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
-                tags: imageTagNames,
-                comment: imageComment,
-                promotionArtifactSource: imagePromotionSource,
-                artifactPromotionRequestViewLink:artifactPromotionRequestViewLink,
-                artifactPromotionApprovalLink:artifactPromotionApprovalLink,
-            }
-
-        }
+        // Note: Approval, ConfigApproval, and ImagePromotion events are now handled at the top of this function
     }
      ParseCIMaterials(material: any): ciMaterials[] {
         return material.ciMaterials ? material.ciMaterials.map((ci: any) => {
