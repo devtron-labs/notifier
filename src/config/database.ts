@@ -18,7 +18,6 @@ import { ConnectionOptions, createConnection } from "typeorm";
 import { NotificationSettings } from "../entities/notificationSettings";
 import { NotifierEventLog } from "../entities/notifierEventLogs";
 import { Event } from "../notification/service/notificationService";
-import { NotificationTemplates } from "../entities/notificationTemplates";
 import { SlackConfig } from "../entities/slackConfig";
 import { SesConfig } from "../entities/sesConfig";
 import { SMTPConfig } from "../entities/smtpConfig";
@@ -42,14 +41,13 @@ export const connectToDatabase = async () => {
         password: pwd,
         database: db,
         entities: [
-            NotificationSettings, 
-            NotifierEventLog, 
-            Event, 
-            NotificationTemplates, 
-            SlackConfig, 
-            SesConfig, 
-            SMTPConfig, 
-            WebhookConfig, 
+            NotificationSettings,
+            NotifierEventLog,
+            Event,
+            SlackConfig,
+            SesConfig,
+            SMTPConfig,
+            WebhookConfig,
             Users
         ]
     };

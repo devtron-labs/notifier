@@ -1,0 +1,127 @@
+{
+  "text": ":tada: Build pipeline Successful |  {{#ciMaterials}} Branch > {{branch}} {{/ciMaterials}} | Application > {{appName}}",
+  "blocks": [
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "\n"
+      }
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":tada: *Build Pipeline successful*\n{{eventTime}}\nTriggered by {{triggeredBy}}"
+      },
+      "accessory": {
+        "type": "image",
+        "image_url": "https://cdn.devtron.ai/images/img-build-notification.png",
+        "alt_text": "Build notification"
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Application*\n{{appName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Pipeline*\n{{pipelineName}}"
+        }
+      ]
+    },
+    {{#ciMaterials}}
+    {{^webhookType}}
+    {
+    "type": "section",
+    "fields": [
+        {
+          "type": "mrkdwn",
+           "text": "*Branch*\n`{{appName}}/{{branch}}`"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Commit*\n<{{& commitLink}}|{{commit}}>"
+        }
+    ]
+    },
+    {{/webhookType}}
+    {{#webhookType}}
+    {{#webhookData.mergedType}}
+    {
+    "type": "section",
+    "fields": [
+        {
+        "type": "mrkdwn",
+        "text": "*Title*\n{{webhookData.data.title}}"
+        },
+        {
+        "type": "mrkdwn",
+        "text": "*Git URL*\n<{{& webhookData.data.giturl}}|View>"
+        }
+    ]
+    },
+    {
+    "type": "section",
+    "fields": [
+        {
+        "type": "mrkdwn",
+        "text": "*Source Branch*\n{{webhookData.data.sourcebranchname}}"
+        },
+        {
+        "type": "mrkdwn",
+        "text": "*Source Commit*\n<{{& webhookData.data.sourcecheckoutlink}}|{{webhookData.data.sourcecheckout}}>"
+        }
+    ]
+    },
+    {
+    "type": "section",
+    "fields": [
+        {
+        "type": "mrkdwn",
+        "text": "*Target Branch*\n{{webhookData.data.targetbranchname}}"
+        },
+        {
+        "type": "mrkdwn",
+        "text": "*Target Commit*\n<{{& webhookData.data.targetcheckoutlink}}|{{webhookData.data.targetcheckout}}>"
+        }
+    ]
+    },
+    {{/webhookData.mergedType}}
+    {{^webhookData.mergedType}}
+    {
+    "type": "section",
+    "fields": [
+        {
+        "type": "mrkdwn",
+        "text": "*Target Checkout*\n{{webhookData.data.targetcheckout}}"
+        }
+    ]
+    },
+    {{/webhookData.mergedType}}
+    {{/webhookType}}
+    {{/ciMaterials}}
+    {
+      "type": "actions",
+      "elements": [
+        {
+          "type": "button",
+          "text": {
+            "type": "plain_text",
+            "text": "View Details"
+          }
+          {{#buildHistoryLink}}
+            ,
+            "url": "{{& buildHistoryLink}}"
+          {{/buildHistoryLink}}
+        }
+      ]
+    }
+  ]
+}

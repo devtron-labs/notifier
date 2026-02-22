@@ -15,7 +15,8 @@
  */
 
 import {EventRepository} from "../../repository/eventsRepository";
-import {NotificationTemplatesRepository, WebhookConfigRepository} from "../../repository/templatesRepository";
+import {WebhookConfigRepository} from "../../repository/templatesRepository";
+import {TemplateLoader} from "../../templates/templateLoader";
 import {NotificationTemplates} from "../../entities/notificationTemplates";
 import {NotificationSettings} from "../../entities/notificationSettings";
 import { WebhookConfig } from "../../entities/webhookconfig";
@@ -34,11 +35,11 @@ export interface Handler {
 
 class NotificationService {
     private eventRepository: EventRepository
-    private templatesRepository: NotificationTemplatesRepository
+    private templatesRepository: TemplateLoader
     private readonly handlers: Handler[]
     private logger: any
 
-    constructor(eventRepository: EventRepository, templatesRepository: NotificationTemplatesRepository, handlers: Handler[], logger: any) {
+    constructor(eventRepository: EventRepository, templatesRepository: TemplateLoader, handlers: Handler[], logger: any) {
         this.eventRepository = eventRepository
         this.handlers = handlers
         this.templatesRepository = templatesRepository

@@ -23,6 +23,7 @@ WORKDIR /app
 COPY --from=builder --chown=devtron:devtron /app/dist/ ./
 COPY --from=builder --chown=devtron:devtron /app/node_modules ./node_modules
 COPY --from=builder --chown=devtron:devtron /app/config/ ./config/
+COPY --from=builder --chown=devtron:devtron /app/src/templates/ ./templates/
 
 USER devtron
 
