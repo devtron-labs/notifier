@@ -26,6 +26,7 @@ export interface ciMaterials {
 }//For Slack
 export interface ParsedCIEvent {
     eventTime: number | string;
+    slackTimestamp?: string;
     triggeredBy: string;
     appName: string;
     pipelineName: string;
@@ -77,6 +78,7 @@ export interface WebhookParsedEvent {
 }
 export interface ParseApprovalEvent {
     eventTime: number | string;
+    slackTimestamp?: string;
     triggeredBy: string;
     appName: string;
     pipelineName: string;
@@ -90,6 +92,7 @@ export interface ParseApprovalEvent {
 }
 export interface ParseConfigApprovalEvent {
     eventTime: number | string;
+    slackTimestamp?: string;
     triggeredBy: string;
     appName: string;
     envName: string;
@@ -116,6 +119,7 @@ export interface ParsedScoopNotification {
 
 export interface ParsedCDEvent {
     eventTime: number | string;
+    slackTimestamp?: string;
     triggeredBy: string;
     appName: string;
     pipelineName: string;
