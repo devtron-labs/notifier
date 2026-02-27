@@ -1,0 +1,59 @@
+{
+  "text": "🛎️ Config Change Approval Requested for {{appName}}",
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "🛎️ Config Change Approval Requested"
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Application:*\n{{appName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Environment:*\n{{envName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Requested by:*\n{{triggeredBy}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Time:*\n{{eventTime}}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*File Type:*\n{{protectConfigFileType}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*File Name:*\n{{protectConfigFileName}}"
+        }
+      ]
+    },
+    {
+      "type": "actions",
+      "elements": [
+        {
+          "type": "button",
+          "text": {
+            "type": "plain_text",
+            "text": "View Request"
+          },
+          "url": "{{&protectConfigLink}}"
+        }
+      ]
+    }
+  ]
+}

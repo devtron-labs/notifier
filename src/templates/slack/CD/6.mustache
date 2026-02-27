@@ -1,0 +1,102 @@
+{
+    "text": ":no_entry_sign: Auto-deployment blocked | Application > {{appName}} | Environment > {{envName}}",
+    "blocks": [{
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "\n"
+            }
+        },
+        {
+            "type": "divider"
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": ":no_entry_sign: *Auto-deployment blocked on {{envName}}*\n{{eventTime}}\nby {{triggeredBy}}"
+            },
+            "accessory": {
+                "type": "image",
+                "image_url": "https://cdn.devtron.ai/images/img-deploy-notification.png",
+                "alt_text": "Deploy notification"
+            }
+        },
+        {
+            "type": "divider"
+        },
+        {{#deploymentWindowComment}}
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": ":shield: {{deploymentWindowComment}}"
+            }
+        },
+        {{/deploymentWindowComment}}
+        {
+            "type": "section",
+            "fields": [{
+                    "type": "mrkdwn",
+                    "text": "*Application*\n{{appName}}\n*Pipeline*\n{{pipelineName}}"
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": "*Environment*\n{{envName}}\n*Stage*\n{{stage}}"
+                }
+            ]
+        },
+        {{#ciMaterials}}
+        {{^webhookType}}
+        {
+        "type": "section",
+        "fields": [
+            {
+            "type": "mrkdwn",
+             "text": "*Branch*\n`{{appName}}/{{branch}}`"
+            },
+            {
+            "type": "mrkdwn",
+            "text": "*Commit*\n<{{& commitLink}}|{{commit}}>"
+            }
+        ]
+        },
+        {{/webhookType}}
+        {{/ciMaterials}}
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "*Docker Image*\n`{{dockerImg}}`"
+            }
+        },
+        {
+            "type": "actions",
+            "elements": [{
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "View Pipeline",
+                        "emoji": true
+                    }
+                    {{#deploymentHistoryLink}}
+                    ,
+                    "url": "{{& deploymentHistoryLink}}"
+                      {{/deploymentHistoryLink}}
+                },
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "App details",
+                        "emoji": true
+                    }
+                    {{#appDetailsLink}}
+                    ,
+                    "url": "{{& appDetailsLink}}"
+                      {{/appDetailsLink}}
+                }
+            ]
+        }
+    ]
+}
