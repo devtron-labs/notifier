@@ -2,81 +2,93 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Requirements
+## Project Overview
 
-- Node.js `>=20.0.0` (production runs Node 24 per Dockerfile)
+Notifier is Devtron's multi-channel notification service. It receives CI/CD pipeline events (via NATS JetStream or HTTP) and dispatches notifications to Slack, email (SES/SMTP), and webhooks. Built with TypeScript, Express, TypeORM (PostgreSQL), and NATS.
 
-## Commands
+## Build & Development Commands
 
 ```bash
-# Development
-npm run dev          # Start with nodemon (watch mode)
-npm run dev:debug    # Start with nodemon + Node inspector
-npm start            # Run via ts-node directly
-
-# Build
-npm run build-ts     # Compile TypeScript to dist/
-npm run serve        # Run compiled output from dist/
-
-# Tests
-npm test             # Run test suite via ts-node test.ts
+npm install              # Install dependencies
+npm run dev              # Dev server with nodemon (auto-reload)
+npm run dev:debug        # Dev server with --inspect debugger
+npm run build-ts         # Compile TypeScript to dist/
+npm run serve            # Run compiled JS from dist/
+npm test <file>          # Run a single test file, e.g.: npm test src/tests/notificationService.test.ts
 ```
+
+Requires Node.js >= 20. TypeScript strict mode is enabled but `noImplicitAny` and `strictNullChecks` are off.
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| DB_HOST | localhost | PostgreSQL host |
+| DB_PORT | 5432 | PostgreSQL port |
+| DB_USER | user | PostgreSQL username |
+| DB_PWD | password | PostgreSQL password |
+| DB | orchestrator | Database name |
+| PORT | 3000 | HTTP server port |
+| NATS_URL | (none) | NATS server URL; NATS disabled if unset |
+| BASE_URL | (none) | Base URL for links embedded in notifications |
 
 ## Architecture
 
-This is a **notification microservice** for the Devtron CD platform. It receives CI/CD pipeline events and routes them to notification channels (Slack, Email via SMTP/SES, Webhooks).
+### Entry Point & Startup
 
-### Request Flow
+`src/server.ts` → connects to PostgreSQL (TypeORM), initializes all services via `src/services/serviceInitializer.ts` (manual DI), connects to NATS, starts Express on PORT.
 
-1. Events arrive either via HTTP (`POST /notify/v2`) or NATS JetStream subscription
-2. `NotificationService` (`src/notification/service/`) routes events to per-channel handlers
-3. Handlers use Mustache templates (`config/slack-template.yaml`, `config/email-template.yaml`) to render messages
-4. `NotifierEventLog` entries are written to PostgreSQL for audit
+### Notification Flow
 
-### Key Layers
+```
+Event Source (NATS JetStream or POST /notify/v2)
+  → NotificationService.sendNotificationV2()
+    → Loads notification_settings + templates from DB
+    → json-rules-engine evaluates filter conditions
+    → Dispatches to matching Handler implementations:
+        SlackService   → Slack webhook API (via notifme-sdk)
+        SESService     → AWS SES (via notifme-sdk)
+        SMTPService    → SMTP server (via notifme-sdk)
+        WebhookService → HTTP POST to user-configured URLs (via axios)
+    → Logs results to notifier_event_logs table
+```
 
-| Layer | Location | Responsibility |
-|-------|----------|----------------|
-| Entry point | `src/server.ts` | DB connect, NATS connect, Express startup |
-| DI/init | `src/services/serviceInitializer.ts` | Wires repositories and handlers together |
-| Core service | `src/notification/service/notificationService.ts` | Orchestrates event → handler routing |
-| Handlers | `src/destination/destinationHandlers/` | SlackService, SMTPService, SESService, WebhookService |
-| Data access | `src/repository/` | TypeORM repositories for all entities |
-| Entities | `src/entities/` | TypeORM models (NotificationSettings, configs, logs) |
-| PubSub | `src/pubSub/` | NATS JetStream consumer |
-| Common | `src/common/` | MustacheHelper, metrics, EventLogBuilder |
+### Handler Interface
 
-### HTTP Endpoints
+All destination handlers implement `Handler` (defined in `src/notification/service/notificationService.ts`) with:
+- `handle(event, templates, setting, configsMap, destinationMap)` — orchestrates a single notification send
+- `sendNotification(event, sdk, template)` — performs the actual send
 
-- `GET /health` — health check
-- `GET /metrics` — Prometheus metrics
-- `POST /notify/v2` — primary notification API (request body: `{ event, notificationSettings }`)
-- `POST /notify` — deprecated legacy endpoint
+### Template System
 
-### Environment Variables
+Mustache templates live in `src/templates/{slack,ses,smtp}/{CI,CD,BASE}/`. Files are named by `EVENT_TYPE` enum value (e.g., `1.mustache` for Trigger). `TemplateLoader` reads them at startup. `MustacheHelper` parses raw events into typed objects with boolean flags for conditional template rendering.
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `DB_HOST` | localhost | PostgreSQL host |
-| `DB_PORT` | 5432 | PostgreSQL port |
-| `DB_USER` | user | PostgreSQL user |
-| `DB_PWD` | password | PostgreSQL password |
-| `DB` | orchestrator | Database name |
-| `PORT` | 3000 | HTTP listen port |
-| `NATS_URL` | — | NATS server URL (optional; NATS is skipped if unset) |
+### Event Types (`src/common/types.ts`)
 
-### Database
+1=Trigger, 2=Success, 3=Fail, 4=Approval, 5=ConfigApproval, 6=Blocked, 7=ImagePromotion, 8=ImageScan, 9=ScoopNotification, 10=DeploymentApproved, 11=ConfigApproved, 12=PromotionApproved, 13=DeploymentCancelled, 14=ConfigCancelled, 15=PromotionCancelled
 
-TypeORM connects to PostgreSQL database `orchestrator`. ORM config is in `ormconfig.json`.
+### Key Directories
 
-### Notification Channels
+- `src/notification/service/` — core NotificationService orchestration
+- `src/destination/destinationHandlers/` — channel-specific handlers (Slack, SES, SMTP, Webhook)
+- `src/entities/` — TypeORM entity models (notification_settings, slack_config, smtp_config, ses_config, webhook_config, events, users, notifier_event_logs)
+- `src/repository/` — data access layer wrapping TypeORM
+- `src/common/` — shared types, MustacheHelper (event parsing), EventLogBuilder, Prometheus metrics
+- `src/templates/` — Mustache templates organized by channel and pipeline type
+- `src/config/` — database, NATS, and logger configuration
+- `src/pubSub/` — NATS JetStream client
 
-Each channel has a config entity, a TypeORM repository, and a handler service:
-- **Slack** — webhook-based via `notifme-sdk`
-- **SMTP** — direct email via `notifme-sdk`
-- **SES** — AWS SES email via `notifme-sdk`
-- **Webhook** — arbitrary HTTP POST via `axios`
+### Dependency Injection
 
-### Event Types
+Manual constructor injection in `src/services/serviceInitializer.ts`. No DI framework — all repositories, helpers, and handlers are instantiated explicitly and wired together.
 
-`EventTypeId` enum: Trigger (1), Success (2), Fail (3), Approval (4), ConfigApproval (5), Blocked (6), ImagePromotion (7), ImageScan (8), ScoopNotification (9)
+## Testing
+
+Tests use Mocha + Chai (BDD style) in `src/tests/`. The custom test runner (`test.ts`) accepts a single file path:
+
+```bash
+npm test src/tests/notificationService.test.ts
+npm test src/tests/approvalTemplateTest.ts
+```
+
+Tests are standalone files — no shared setup/teardown infrastructure.

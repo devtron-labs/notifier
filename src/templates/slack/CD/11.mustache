@@ -1,0 +1,46 @@
+{
+  "text": "✅ Config Change Approved for {{appName}}",
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "✅ Config Change Approved"
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Application:*\n{{appName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Environment:*\n{{envName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Approved by:*\n{{triggeredBy}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Time:*\n{{eventTime}}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*File Type:*\n{{protectConfigFileType}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*File Name:*\n{{protectConfigFileName}}"
+        }
+      ]
+    }
+  ]
+}

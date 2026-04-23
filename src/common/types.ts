@@ -88,6 +88,11 @@ export interface ParseApprovalEvent {
     imageLink?: string;
     imageTag: string;
     approvalLink?: string;
+    approvalAction?: string; // "requested", "approved", or "cancelled"
+    // Boolean flags for Mustache template conditionals
+    isApprovalRequested?: boolean;
+    isApprovalApproved?: boolean;
+    isApprovalCancelled?: boolean;
 
 }
 export interface ParseConfigApprovalEvent {
@@ -101,6 +106,88 @@ export interface ParseConfigApprovalEvent {
     protectConfigFileName: string;
     protectConfigLink?: string;
     approvalLink?: string;
+    approvalAction?: string; // "requested", "approved", or "cancelled"
+    // Boolean flags for Mustache template conditionals
+    isApprovalRequested?: boolean;
+    isApprovalApproved?: boolean;
+    isApprovalCancelled?: boolean;
+}
+
+export interface ParseDeploymentApprovedEvent {
+    eventTime: number | string;
+    slackTimestamp?: string;
+    triggeredBy: string;
+    appName: string;
+    pipelineName: string;
+    envName: string;
+    tags?: string[];
+    comment?: string;
+    imageApprovalLink?: string;
+    imageTag: string;
+    dockerImageUrl?: string;
+}
+
+export interface ParseConfigApprovedEvent {
+    eventTime: number | string;
+    slackTimestamp?: string;
+    triggeredBy: string;
+    appName: string;
+    envName: string;
+    protectConfigComment?: string[];
+    protectConfigFileType: string;
+    protectConfigFileName: string;
+    protectConfigLink?: string;
+}
+
+export interface ParsePromotionApprovedEvent {
+    eventTime: number | string;
+    slackTimestamp?: string;
+    triggeredBy: string;
+    appName: string;
+    envName: string;
+    imageTagNames?: string[];
+    imageComment?: string;
+    artifactPromotionRequestViewLink?: string;
+    promotionArtifactSource?: string;
+    imageTag: string;
+    dockerImageUrl?: string;
+}
+
+export interface ParseDeploymentCancelledEvent {
+    eventTime: number | string;
+    slackTimestamp?: string;
+    triggeredBy: string;
+    appName: string;
+    envName: string;
+    pipelineName: string;
+    comment?: string;
+    tags?: string[];
+    imageTag: string;
+    dockerImageUrl?: string;
+}
+
+export interface ParseConfigCancelledEvent {
+    eventTime: number | string;
+    slackTimestamp?: string;
+    triggeredBy: string;
+    appName: string;
+    envName: string;
+    protectConfigComment?: string[];
+    protectConfigFileType: string;
+    protectConfigFileName: string;
+}
+
+export interface ParsePromotionCancelledEvent {
+    eventTime: number | string;
+    slackTimestamp?: string;
+    triggeredBy: string;
+    appName: string;
+    envName: string;
+    imageTagNames?: string[];
+    imageComment?: string;
+    promotionArtifactSource?: string;
+    imageTag: string;
+    dockerImageUrl?: string;
 }
 
 export interface ParsedScoopNotification {
@@ -153,6 +240,12 @@ export enum EVENT_TYPE {
     ImagePromotion = 7,
     ImageScan = 8,
     ScoopNotification = 9,
+    DeploymentApproved = 10,
+    ConfigApproved = 11,
+    PromotionApproved = 12,
+    DeploymentCancelled = 13,
+    ConfigCancelled = 14,
+    PromotionCancelled = 15,
 }
 
 export enum ENV_TYPE_INT{

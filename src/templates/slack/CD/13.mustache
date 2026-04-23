@@ -1,0 +1,40 @@
+{
+  "text": "❌ Deployment Request Cancelled for {{appName}}",
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "❌ Deployment Request Cancelled"
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Application:*\n{{appName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Environment:*\n{{envName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Pipeline:*\n{{pipelineName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Cancelled by:*\n{{triggeredBy}}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Image Tag:* `{{imageTag}}`\n*Time:* {{eventTime}}{{#comment}}\n*Comment:* {{comment}}{{/comment}}{{#tags}}\n*Tags:* {{tags}}{{/tags}}"
+      }
+    }
+  ]
+}
