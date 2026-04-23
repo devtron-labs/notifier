@@ -26,6 +26,7 @@ import {UsersRepository} from "../../repository/usersRepository";
 import { SMTPConfigRepository } from '../../repository/smtpConfigRepository';
 import { MustacheHelper } from '../../common/mustacheHelper';
 import {CustomError} from "../../entities/events";
+import {EVENT_TYPE} from "../../common/types";
 
 //https://github.com/notifme/notifme-sdk/blob/master/src/models/notification-request.js#L132
 export class SMTPService implements Handler {
@@ -217,11 +218,15 @@ export class SMTPService implements Handler {
             parsedEvent['fromEmail'] = event.payload['fromEmail'];
             parsedEvent['toEmail'] = event.payload['toEmail'];
             let json: string
-            if(event.eventTypeId===4){
+            // Handle Approval, ImagePromotion, DeploymentApproved, and PromotionApproved events
+            if(event.eventTypeId===4 || event.eventTypeId === EVENT_TYPE.ImagePromotion ||
+               event.eventTypeId === EVENT_TYPE.DeploymentApproved || event.eventTypeId === EVENT_TYPE.PromotionApproved){
                 let commentDisplayStyle = (event.payload.imageComment === "") ? 'none' : 'inline';
                 let tagDisplayStyle = (event.payload.imageTagNames === null) ? 'none' : 'inline';
                 json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle ,tagDisplayStyle});
-            }else if(event.eventTypeId===5){
+            }
+            // Handle ConfigApproval and ConfigApproved events
+            else if(event.eventTypeId===5 || event.eventTypeId === EVENT_TYPE.ConfigApproved){
                 let commentDisplayStyle = (event.payload.protectConfigComment === "") ? 'none' : 'inline';
                 json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle });
             }else{

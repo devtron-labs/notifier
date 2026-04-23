@@ -1,0 +1,54 @@
+{
+  "text": "🛎️ Image approval requested for {{appName}}",
+  "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🛎️ Image Approval Request"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Application:*\n{{appName}}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Environment:*\n{{envName}}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Pipeline:*\n{{pipelineName}}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Requested by:*\n{{triggeredBy}}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Image Tag:* `{{imageTag}}`\n*Time:* {{eventTime}}{{#comment}}\n*Comment:* {{comment}}{{/comment}}{{#tags}}\n*Tags:* {{tags}}{{/tags}}"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Request"
+                      },
+                      "url": "{{{imageApprovalLink}}}",
+                      "style": "primary"
+                    }
+                  ]
+                }
+              ]
+}

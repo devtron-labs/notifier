@@ -1,0 +1,40 @@
+{
+  "text": "❌ Artifact Promotion Request Cancelled for {{appName}}",
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "❌ Artifact Promotion Request Cancelled"
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Application:*\n{{appName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Environment:*\n{{envName}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Promoted From:*\n{{promotionArtifactSource}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Cancelled by:*\n{{triggeredBy}}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Docker Image:* `{{dockerImageUrl}}`\n*Time:* {{eventTime}}{{#imageComment}}\n*Comment:* {{imageComment}}{{/imageComment}}{{#imageTagNames}}\n*Tags:* {{imageTagNames}}{{/imageTagNames}}"
+      }
+    }
+  ]
+}
