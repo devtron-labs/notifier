@@ -15,7 +15,8 @@
  */
 
 import {EventRepository} from "../../repository/eventsRepository";
-import {NotificationTemplatesRepository, WebhookConfigRepository} from "../../repository/templatesRepository";
+import {WebhookConfigRepository} from "../../repository/templatesRepository";
+import {TemplateLoader} from "../../templates/templateLoader";
 import {NotificationTemplates} from "../../entities/notificationTemplates";
 import {NotificationSettings} from "../../entities/notificationSettings";
 import { WebhookConfig } from "../../entities/webhookconfig";
@@ -34,11 +35,11 @@ export interface Handler {
 
 class NotificationService {
     private eventRepository: EventRepository
-    private templatesRepository: NotificationTemplatesRepository
+    private templatesRepository: TemplateLoader
     private readonly handlers: Handler[]
     private logger: any
 
-    constructor(eventRepository: EventRepository, templatesRepository: NotificationTemplatesRepository, handlers: Handler[], logger: any) {
+    constructor(eventRepository: EventRepository, templatesRepository: TemplateLoader, handlers: Handler[], logger: any) {
         this.eventRepository = eventRepository
         this.handlers = handlers
         this.templatesRepository = templatesRepository
@@ -151,18 +152,24 @@ class NotificationService {
             this.logger.info(`Processing notification V2 for event type: ${event.eventTypeId}, correlationId: ${event.correlationId}`);
             this.logger.info(`Using ${notificationSettings.length} pre-provided notification settings`);
 
-            // Handle approval notifications (eventTypeId 4 = Approval, 5 = ConfigApproval)
-            // Approval events use event.payload.providers instead of notificationSettings
-            if (event.eventTypeId === EVENT_TYPE.Approval || event.eventTypeId === EVENT_TYPE.ConfigApproval) {
-                this.logger.info(`Detected approval event type: ${event.eventTypeId}`);
+            // Handle approval notifications (eventTypeId 4 = Approval, 5 = ConfigApproval, 7 = ArtifactPromotionApproval)
+            // and approved notifications (eventTypeId 10 = DeploymentApproved, 11 = ConfigApproved, 12 = PromotionApproved)
+            // These events use event.payload.providers instead of notificationSettings
+            if (event.eventTypeId === EVENT_TYPE.Approval ||
+                event.eventTypeId === EVENT_TYPE.ConfigApproval ||
+                event.eventTypeId === EVENT_TYPE.ImagePromotion ||
+                event.eventTypeId === EVENT_TYPE.DeploymentApproved ||
+                event.eventTypeId === EVENT_TYPE.ConfigApproved ||
+                event.eventTypeId === EVENT_TYPE.PromotionApproved) {
+                this.logger.info(`Detected approval/approved event type: ${event.eventTypeId}`);
                 if (event.payload.providers && event.payload.providers.length > 0) {
-                    this.logger.info(`Processing approval notification with ${event.payload.providers.length} providers`);
+                    this.logger.info(`Processing approval/approved notification with ${event.payload.providers.length} providers`);
                     await this.sendApprovalNotification(event);
-                    this.logger.info(`Approval notification sent successfully`);
+                    this.logger.info(`Approval/approved notification sent successfully`);
                     return new CustomResponse("notification sent", 200);
                 } else {
-                    this.logger.warn(`Approval event received but no providers found in payload for event ${event.correlationId}`);
-                    return new CustomResponse("", 0, new CustomError("no providers found in payload for approval event", 400));
+                    this.logger.warn(`Approval/approved event received but no providers found in payload for event ${event.correlationId}`);
+                    return new CustomResponse("", 0, new CustomError("no providers found in payload for approval/approved event", 400));
                 }
             }
 

@@ -18,7 +18,7 @@ import { Event } from '../notification/service/notificationService';
 import moment from 'moment-timezone';
 import e, { json } from 'express';
 import {EVENT_TYPE, ParsedScoopNotification} from "./types";
-import { ciMaterials ,ParsedCIEvent,vulnerability,severityCount,WebhookParsedEvent,ParseApprovalEvent,ParseConfigApprovalEvent,ParsedCDEvent} from './types';
+import { ciMaterials ,ParsedCIEvent,vulnerability,severityCount,WebhookParsedEvent,ParseApprovalEvent,ParseConfigApprovalEvent,ParsedCDEvent,ParseDeploymentApprovedEvent,ParseConfigApprovedEvent,ParsePromotionApprovedEvent,ParseDeploymentCancelledEvent,ParseConfigCancelledEvent,ParsePromotionCancelledEvent} from './types';
 import Mustache from "mustache";
 import {getCommitsFromGitTriggers} from "./getCommitsFromGitTriggers";
 export class MustacheHelper {
@@ -73,14 +73,17 @@ export class MustacheHelper {
         return parsedScoopNotification
     }
 
-    parseEvent(event: Event, isSlackNotification?: boolean): ParsedCIEvent | ParsedCDEvent | ParseApprovalEvent | ParseConfigApprovalEvent | ParseArtifactPromotionEvent | ParsedScoopNotification{
+    parseEvent(event: Event, isSlackNotification?: boolean): ParsedCIEvent | ParsedCDEvent | ParseApprovalEvent | ParseConfigApprovalEvent | ParseArtifactPromotionEvent | ParsedScoopNotification | ParseDeploymentApprovedEvent | ParseConfigApprovedEvent | ParsePromotionApprovedEvent | ParseDeploymentCancelledEvent | ParseConfigCancelledEvent | ParsePromotionCancelledEvent{
         if(event.eventTypeId===EVENT_TYPE.ScoopNotification){
             return this.parseScoopNotification(event)
         }
 
         const date = moment(event.eventTime);
+        // For both Slack and email, use a human-readable format
+        // Slack format: "Monday, 15 December 6:38 PM"
+        // Email format: "Monday, December 15th 2025 06:38 PM GMT+0530"
         const timestamp = isSlackNotification
-            ? date.unix()
+            ? date.format('dddd, D MMMM h:mm A')
             : date.format('dddd, MMMM Do YYYY hh:mm A [GMT]Z');
 
         // For Slack, create a formatted timestamp string with the special Slack format
@@ -93,13 +96,19 @@ export class MustacheHelper {
 
         // Handle approval events FIRST (before checking pipelineType)
         if (event.eventTypeId===EVENT_TYPE.Approval){
-            let  imageTagNames,imageComment,imageLink,approvalLink;
+            let  imageTagNames,imageComment,imageLink,approvalLink,approvalAction;
             let index = -1;
             if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
             if (event.payload.imageTagNames) imageTagNames = event.payload.imageTagNames;
             if (event.payload.imageComment) imageComment = event.payload.imageComment;
             if (baseURL && event.payload.imageApprovalLink) imageLink =`${baseURL}${event.payload.imageApprovalLink}`;
             if (baseURL && event.payload.approvalLink) approvalLink = `${baseURL}${event.payload.approvalLink}`;
+            if (event.payload.approvalAction) approvalAction = event.payload.approvalAction;
+
+            // Add boolean flags for Mustache conditional rendering
+            const isRequested = !approvalAction || approvalAction === "requested";
+            const isApproved = approvalAction === "approved";
+            const isCancelled = approvalAction === "cancelled";
 
             return {
                 eventTime: timestamp,
@@ -113,22 +122,34 @@ export class MustacheHelper {
                 tags:imageTagNames,
                 imageApprovalLink:imageLink,
                 approvalLink:approvalLink,
+                approvalAction:approvalAction,
+                // Boolean flags for template conditionals
+                isApprovalRequested: isRequested,
+                isApprovalApproved: isApproved,
+                isApprovalCancelled: isCancelled,
             }
         }
 
         if (event.eventTypeId===EVENT_TYPE.ConfigApproval){
-            let  protectConfigFileType,protectConfigFileName,protectConfigComment,protectConfigLink,envName,approvalLink;
+            let  protectConfigFileType,protectConfigFileName,protectConfigComment,protectConfigLink,envName,approvalLink,approvalAction;
             if (event.payload.protectConfigFileType) protectConfigFileType = event.payload.protectConfigFileType;
             if (event.payload.protectConfigFileName) protectConfigFileName = event.payload.protectConfigFileName;
             if (event.payload.protectConfigComment) protectConfigComment = event.payload.protectConfigComment.split("\n");
             if (baseURL && event.payload.protectConfigLink) protectConfigLink =`${baseURL}${event.payload.protectConfigLink}`;
             if (baseURL && event.payload.approvalLink) approvalLink = `${baseURL}${event.payload.approvalLink}`;
+            if (event.payload.approvalAction) approvalAction = event.payload.approvalAction;
            if (!event.payload.envName){
             envName="Base configuration"
            }
            else{
             envName=event.payload.envName
            }
+            
+            // Add boolean flags for Mustache conditional rendering
+            const isRequested = !approvalAction || approvalAction === "requested";
+            const isApproved = approvalAction === "approved";
+            const isCancelled = approvalAction === "cancelled";
+
             return {
                 eventTime: timestamp,
                 slackTimestamp: slackTimestamp,
@@ -140,13 +161,193 @@ export class MustacheHelper {
                 protectConfigComment:protectConfigComment,
                 protectConfigLink:protectConfigLink,
                 approvalLink:approvalLink,
+                approvalAction:approvalAction,
+                // Boolean flags for template conditionals
+                isApprovalRequested: isRequested,
+                isApprovalApproved: isApproved,
+                isApprovalCancelled: isCancelled,
+            }
+        }
+
+        // Handle DeploymentApproved event
+        if (event.eventTypeId===EVENT_TYPE.DeploymentApproved){
+            let imageTagNames, imageComment, imageLink;
+            let index = -1;
+            if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
+            if (event.payload.imageTagNames) imageTagNames = event.payload.imageTagNames;
+            if (event.payload.imageComment) imageComment = event.payload.imageComment;
+            if (baseURL && event.payload.imageApprovalLink) imageLink = `${baseURL}${event.payload.imageApprovalLink}`;
+
+            return {
+                eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
+                triggeredBy: event.payload.triggeredBy || "NA",
+                appName: event.payload.appName || "NA",
+                envName: event.payload.envName || "NA",
+                pipelineName: event.payload.pipelineName || "NA",
+                imageTag: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
+                comment: imageComment,
+                tags: imageTagNames,
+                imageApprovalLink: imageLink,
+                dockerImageUrl: event.payload.dockerImageUrl,
+            }
+        }
+
+        // Handle ConfigApproved event
+        if (event.eventTypeId===EVENT_TYPE.ConfigApproved){
+            let protectConfigFileType, protectConfigFileName, protectConfigComment, protectConfigLink, envName;
+            if (event.payload.protectConfigFileType) protectConfigFileType = event.payload.protectConfigFileType;
+            if (event.payload.protectConfigFileName) protectConfigFileName = event.payload.protectConfigFileName;
+            if (event.payload.protectConfigComment) protectConfigComment = event.payload.protectConfigComment.split("\n");
+            if (baseURL && event.payload.protectConfigLink) protectConfigLink = `${baseURL}${event.payload.protectConfigLink}`;
+            if (!event.payload.envName){
+                envName = "Base configuration"
+            }
+            else{
+                envName = event.payload.envName
+            }
+            return {
+                eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
+                triggeredBy: event.payload.triggeredBy || "NA",
+                appName: event.payload.appName || "NA",
+                envName: envName,
+                protectConfigFileType: protectConfigFileType,
+                protectConfigFileName: protectConfigFileName,
+                protectConfigComment: protectConfigComment,
+                protectConfigLink: protectConfigLink,
+            }
+        }
+
+        // Handle PromotionApproved event
+        if (event.eventTypeId===EVENT_TYPE.PromotionApproved){
+            let artifactPromotionRequestViewLink, imageTagNames, imageComment, imagePromotionSource, envName;
+            let index = -1;
+            if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
+            if (baseURL && event.payload.artifactPromotionRequestViewLink) artifactPromotionRequestViewLink = `${baseURL}${event.payload.artifactPromotionRequestViewLink}`;
+            if (event.payload.imageTagNames) imageTagNames = event.payload.imageTagNames;
+            if (event.payload.imageComment) imageComment = event.payload.imageComment;
+            if (event.payload.promotionArtifactSource) imagePromotionSource = event.payload.promotionArtifactSource;
+            if (event.payload.envName) envName = event.payload.envName;
+
+            return {
+                eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
+                triggeredBy: event.payload.triggeredBy || "NA",
+                appName: event.payload.appName || "NA",
+                envName: event.payload.envName || envName,
+                imageTag: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
+                imageTagNames: imageTagNames,
+                imageComment: imageComment,
+                promotionArtifactSource: imagePromotionSource,
+                artifactPromotionRequestViewLink: artifactPromotionRequestViewLink,
+                dockerImageUrl: event.payload.dockerImageUrl,
+            }
+        }
+
+        // Handle DeploymentCancelled event
+        if (event.eventTypeId===EVENT_TYPE.DeploymentCancelled){
+            let imageTagNames, imageComment;
+            let index = -1;
+            if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
+            if (event.payload.imageTagNames) imageTagNames = event.payload.imageTagNames;
+            if (event.payload.imageComment) imageComment = event.payload.imageComment;
+
+            return {
+                eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
+                triggeredBy: event.payload.triggeredBy || "NA",
+                appName: event.payload.appName || "NA",
+                envName: event.payload.envName || "NA",
+                pipelineName: event.payload.pipelineName || "NA",
+                imageTag: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
+                comment: imageComment,
+                tags: imageTagNames,
+                dockerImageUrl: event.payload.dockerImageUrl,
+            }
+        }
+
+        // Handle ConfigCancelled event
+        if (event.eventTypeId===EVENT_TYPE.ConfigCancelled){
+            let protectConfigFileType, protectConfigFileName, protectConfigComment, envName;
+            if (event.payload.protectConfigFileType) protectConfigFileType = event.payload.protectConfigFileType;
+            if (event.payload.protectConfigFileName) protectConfigFileName = event.payload.protectConfigFileName;
+            if (event.payload.protectConfigComment) protectConfigComment = event.payload.protectConfigComment.split("\n");
+            if (!event.payload.envName){
+                envName = "Base configuration"
+            }
+            else{
+                envName = event.payload.envName
+            }
+            return {
+                eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
+                triggeredBy: event.payload.triggeredBy || "NA",
+                appName: event.payload.appName || "NA",
+                envName: envName,
+                protectConfigFileType: protectConfigFileType,
+                protectConfigFileName: protectConfigFileName,
+                protectConfigComment: protectConfigComment,
+            }
+        }
+
+        // Handle PromotionCancelled event
+        if (event.eventTypeId===EVENT_TYPE.PromotionCancelled){
+            let imageTagNames, imageComment, imagePromotionSource, envName;
+            let index = -1;
+            if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
+            if (event.payload.imageTagNames) imageTagNames = event.payload.imageTagNames;
+            if (event.payload.imageComment) imageComment = event.payload.imageComment;
+            if (event.payload.promotionArtifactSource) imagePromotionSource = event.payload.promotionArtifactSource;
+            if (event.payload.envName) envName = event.payload.envName;
+
+            return {
+                eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
+                triggeredBy: event.payload.triggeredBy || "NA",
+                appName: event.payload.appName || "NA",
+                envName: event.payload.envName || envName,
+                imageTag: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
+                imageTagNames: imageTagNames,
+                imageComment: imageComment,
+                promotionArtifactSource: imagePromotionSource,
+                dockerImageUrl: event.payload.dockerImageUrl,
+            }
+        }
+
+        // Handle ImagePromotion event (before CI/CD material parsing, since it has pipelineType=CD
+        // but needs promotion-specific variables instead of the generic CD template)
+        if (event.eventTypeId === EVENT_TYPE.ImagePromotion) {
+            let imageLink, approvalLink;
+            let imageTagNames = event.payload?.imageTagNames;
+            let imageComment = event.payload?.imageComment;
+            let imagePromotionSource = event.payload?.promotionArtifactSource;
+            let envName = event.payload?.envName;
+            let index = -1;
+            if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
+            if (baseURL && event.payload.imageApprovalLink) imageLink = `${baseURL}${event.payload.imageApprovalLink}`;
+            if (baseURL && event.payload.approvalLink) approvalLink = `${baseURL}${event.payload.approvalLink}`;
+
+            return {
+                eventTime: timestamp,
+                slackTimestamp: slackTimestamp,
+                triggeredBy: event.payload.triggeredBy || "NA",
+                appName: event.payload.appName || "NA",
+                envName: event.payload.envName || envName,
+                pipelineName: event.payload.pipelineName || "NA",
+                imageTag: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
+                tags: imageTagNames,
+                comment: imageComment,
+                promotionArtifactSource: imagePromotionSource,
+                imageApprovalLink: imageLink,
+                approvalLink: approvalLink,
             }
         }
 
         // Now handle CI/CD events (which need material parsing)
         let material = event.payload.material;
         let ciMaterials;
-        if (event.eventTypeId!==EVENT_TYPE.Approval && event.eventTypeId!==EVENT_TYPE.ConfigApproval && event.eventTypeId!=EVENT_TYPE.ImagePromotion){
+        if (event.eventTypeId!==EVENT_TYPE.Approval && event.eventTypeId!==EVENT_TYPE.ConfigApproval && event.eventTypeId!=EVENT_TYPE.ImagePromotion && event.eventTypeId!==EVENT_TYPE.DeploymentApproved && event.eventTypeId!==EVENT_TYPE.ConfigApproved && event.eventTypeId!==EVENT_TYPE.PromotionApproved && event.eventTypeId!==EVENT_TYPE.DeploymentCancelled && event.eventTypeId!==EVENT_TYPE.ConfigCancelled && event.eventTypeId!==EVENT_TYPE.PromotionCancelled){
         ciMaterials = material.ciMaterials ? material.ciMaterials.map((ci) => {
             if (material && material.gitTriggers && material.gitTriggers[ci.id]) {
                 let trigger = material.gitTriggers[ci.id];
@@ -225,33 +426,7 @@ export class MustacheHelper {
                 triggeredWithoutApprovalStyle: event.isDeploymentDoneWithoutApproval ? 'block' : 'none'
             }
         }
-        // Note: Approval and ConfigApproval events are now handled at the top of this function
-        else if (event.eventTypeId === EVENT_TYPE.ImagePromotion ){
-
-            let artifactPromotionRequestViewLink : string   = `${baseURL}${event.payload?.artifactPromotionRequestViewLink}`
-            let artifactPromotionApprovalLink = `${baseURL}${event.payload?.artifactPromotionApprovalLink}`
-            let imageTagNames = event.payload?.imageTagNames
-            let imageComment = event.payload?.imageComment
-            let imagePromotionSource = event.payload?.promotionArtifactSource
-            let envName  = event.payload?.envName
-            let index = -1;
-            if (event.payload.dockerImageUrl) index = event.payload.dockerImageUrl.lastIndexOf(":");
-
-            return {
-                eventTime: timestamp,
-                slackTimestamp: slackTimestamp,
-                triggeredBy: event.payload.triggeredBy || "NA",
-                appName: event.payload.appName || "NA",
-                envName: event.payload.envName || envName,
-                imageTag: index >= 0 ? event.payload.dockerImageUrl.substring(index + 1) : "NA",
-                tags: imageTagNames,
-                comment: imageComment,
-                promotionArtifactSource: imagePromotionSource,
-                artifactPromotionRequestViewLink:artifactPromotionRequestViewLink,
-                artifactPromotionApprovalLink:artifactPromotionApprovalLink,
-            }
-
-        }
+        // Note: Approval, ConfigApproval, and ImagePromotion events are now handled at the top of this function
     }
      ParseCIMaterials(material: any): ciMaterials[] {
         return material.ciMaterials ? material.ciMaterials.map((ci: any) => {
