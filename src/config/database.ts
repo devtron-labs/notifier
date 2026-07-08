@@ -15,7 +15,7 @@
  */
 
 import { ConnectionOptions, createConnection } from "typeorm";
-import { ConnectionOptions as TlsConnectionOptions } from "tls";
+import { TlsOptions } from "tls";
 import * as fs from "fs";
 import { NotificationSettings } from "../entities/notificationSettings";
 import { NotifierEventLog } from "../entities/notifierEventLogs";
@@ -32,7 +32,7 @@ import * as process from "process";
 // node-postgres ssl option, mirroring libpq / AWS RDS semantics. Empty/"disable" returns
 // false (plaintext, the pre-existing behaviour). verify-ca/verify-full require
 // DB_SSL_ROOT_CERT (for AWS RDS the downloaded global-bundle.pem).
-const buildSslOptions = (): boolean | TlsConnectionOptions => {
+const buildSslOptions = (): boolean | TlsOptions => {
     const sslMode: string = (process.env.DB_SSL_MODE || "").trim().toLowerCase();
     switch (sslMode) {
         case "":
@@ -48,10 +48,12 @@ const buildSslOptions = (): boolean | TlsConnectionOptions => {
                 throw new Error("DB_SSL_ROOT_CERT is required for verify-ca/verify-full ssl modes");
             }
             const ca: string = fs.readFileSync(rootCertPath).toString();
-            const options: TlsConnectionOptions = { rejectUnauthorized: true, ca };
+            const options: TlsOptions = { rejectUnauthorized: true, ca };
             if (sslMode === "verify-ca") {
-                // verify the certificate chain but not the server hostname
-                options.checkServerIdentity = () => undefined;
+                // verify the certificate chain but not the server hostname.
+                // checkServerIdentity is honoured by tls.connect at runtime but is not
+                // part of the TlsOptions type in @types/node, hence the cast.
+                (options as any).checkServerIdentity = () => undefined;
             }
             return options;
         }
