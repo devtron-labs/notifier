@@ -15,6 +15,8 @@
  */
 
 import { ConnectionOptions, createConnection } from "typeorm";
+import { ConnectionOptions as TlsConnectionOptions } from "tls";
+import * as fs from "fs";
 import { NotificationSettings } from "../entities/notificationSettings";
 import { NotifierEventLog } from "../entities/notifierEventLogs";
 import { Event } from "../notification/service/notificationService";
@@ -25,6 +27,38 @@ import { WebhookConfig } from "../entities/webhookconfig";
 import { Users } from "../entities/users";
 import { logger } from "./logger";
 import * as process from "process";
+
+// buildSslOptions maps DB_SSL_MODE (disable|require|verify-ca|verify-full) to the
+// node-postgres ssl option, mirroring libpq / AWS RDS semantics. Empty/"disable" returns
+// false (plaintext, the pre-existing behaviour). verify-ca/verify-full require
+// DB_SSL_ROOT_CERT (for AWS RDS the downloaded global-bundle.pem).
+const buildSslOptions = (): boolean | TlsConnectionOptions => {
+    const sslMode: string = (process.env.DB_SSL_MODE || "").trim().toLowerCase();
+    switch (sslMode) {
+        case "":
+        case "disable":
+            return false;
+        case "require":
+            // Encrypt the connection but do not validate the server certificate.
+            return { rejectUnauthorized: false };
+        case "verify-ca":
+        case "verify-full": {
+            const rootCertPath: string = process.env.DB_SSL_ROOT_CERT;
+            if (!rootCertPath) {
+                throw new Error("DB_SSL_ROOT_CERT is required for verify-ca/verify-full ssl modes");
+            }
+            const ca: string = fs.readFileSync(rootCertPath).toString();
+            const options: TlsConnectionOptions = { rejectUnauthorized: true, ca };
+            if (sslMode === "verify-ca") {
+                // verify the certificate chain but not the server hostname
+                options.checkServerIdentity = () => undefined;
+            }
+            return options;
+        }
+        default:
+            throw new Error(`unsupported DB_SSL_MODE "${sslMode}" (supported: disable, require, verify-ca, verify-full)`);
+    }
+};
 
 export const connectToDatabase = async () => {
     const dbHost: string = process.env.DB_HOST;
@@ -40,6 +74,7 @@ export const connectToDatabase = async () => {
         username: user,
         password: pwd,
         database: db,
+        ssl: buildSslOptions(),
         entities: [
             NotificationSettings,
             NotifierEventLog,
