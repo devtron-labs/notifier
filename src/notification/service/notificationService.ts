@@ -154,13 +154,15 @@ class NotificationService {
 
             // Handle approval notifications (eventTypeId 4 = Approval, 5 = ConfigApproval, 7 = ArtifactPromotionApproval)
             // and approved notifications (eventTypeId 10 = DeploymentApproved, 11 = ConfigApproved, 12 = PromotionApproved)
+            // and decline notifications (eventTypeId 16 = DeploymentDeclined)
             // These events use event.payload.providers instead of notificationSettings
             if (event.eventTypeId === EVENT_TYPE.Approval ||
                 event.eventTypeId === EVENT_TYPE.ConfigApproval ||
                 event.eventTypeId === EVENT_TYPE.ImagePromotion ||
                 event.eventTypeId === EVENT_TYPE.DeploymentApproved ||
                 event.eventTypeId === EVENT_TYPE.ConfigApproved ||
-                event.eventTypeId === EVENT_TYPE.PromotionApproved) {
+                event.eventTypeId === EVENT_TYPE.PromotionApproved ||
+                event.eventTypeId === EVENT_TYPE.DeploymentDeclined) {
                 this.logger.info(`Detected approval/approved event type: ${event.eventTypeId}`);
                 if (event.payload.providers && event.payload.providers.length > 0) {
                     this.logger.info(`Processing approval/approved notification with ${event.payload.providers.length} providers`);
