@@ -190,6 +190,19 @@ export interface ParsePromotionCancelledEvent {
     dockerImageUrl?: string;
 }
 
+export interface ParseDeploymentDeclinedEvent {
+    eventTime: number | string;
+    slackTimestamp?: string;
+    triggeredBy: string;
+    appName: string;
+    envName: string;
+    pipelineName: string;
+    comment?: string;
+    tags?: string[];
+    imageTag: string;
+    dockerImageUrl?: string;
+}
+
 export interface ParsedScoopNotification {
     heading: string;
     kind: string;
@@ -246,6 +259,7 @@ export enum EVENT_TYPE {
     DeploymentCancelled = 13,
     ConfigCancelled = 14,
     PromotionCancelled = 15,
+    DeploymentDeclined = 16,
 }
 
 export enum ENV_TYPE_INT{
