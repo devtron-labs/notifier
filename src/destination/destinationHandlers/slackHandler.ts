@@ -149,6 +149,9 @@ export class SlackService implements Handler {
             }else{
                 let parsedEvent = this.mh.parseEvent(event as Event, true);
                 jsons = Mustache.render(template, parsedEvent);
+                // {{eventTime}} HTML-escapes the <!date> token; put the raw token back so Slack parses it
+                const t = (parsedEvent as any).eventTime;
+                if (typeof t === 'string') jsons = jsons.split(Mustache.escape(t)).join(t);
             }
             let j = JSON.parse(jsons)
             const res = await sdk.send(
