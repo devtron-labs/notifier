@@ -83,7 +83,7 @@ export class MustacheHelper {
         // Keep it free of quotes: slackHandler restores it unescaped into the JSON template.
         // Email format: "Monday, December 15th 2025 06:38 PM GMT+0530"
         const timestamp = isSlackNotification
-            ? `<!date^${date.unix()}^{date_long} {time}|${date.utc().format('D MMM YYYY h:mm A')} UTC>`
+            ? `<!date^${date.unix()}^{date_long} {time}|${date.utc().format('dddd, D MMM h:mm A')} UTC>`
             : date.format('dddd, MMMM Do YYYY hh:mm A [GMT]Z');
 
         // For Slack, create a formatted timestamp string with the special Slack format
