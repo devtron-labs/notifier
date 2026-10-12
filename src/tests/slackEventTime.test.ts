@@ -14,6 +14,6 @@ describe('slack eventTime', () => {
 
         await slack.sendNotification(e as Event, sdk, template);
 
-        expect(sent.text).to.equal('*Time:* <!date^1739095200^{date_long} {time}|Sunday, 9 Feb 10:00 AM UTC> by a&quot;b'); // other values stay escaped, keeping the JSON valid
+        expect(sent.text).to.equal('*Time:* <!date^1739095200^{date_long} {time}|Sunday, 9 February 10:00 AM UTC> by a&quot;b'); // other values stay escaped, keeping the JSON valid
     });
 });
