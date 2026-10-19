@@ -128,9 +128,9 @@ export class SlackService implements Handler {
             }
     }
 
-    public async sendAndLogNotification(event: Event, sdk: NotifmeSdk, setting: NotificationSettings, p: any, slackTemplate: NotificationTemplates){
+    public async sendAndLogNotification(event: Event, sdk: NotifmeSdk, setting: NotificationSettings, p: any, slackTemplate: NotificationTemplates, templateData?: any){
         try {
-            const result = await this.sendNotification(event, sdk, slackTemplate.template_payload)
+            const result = await this.sendNotification(event, sdk, slackTemplate.template_payload, templateData)
             await this.saveNotificationEventSuccessLog(result, event, p, setting);
         } catch(error: any) {
             this.logger.error(error.message);
@@ -138,7 +138,7 @@ export class SlackService implements Handler {
         };
     }
 
-    public async sendNotification(event: Event, sdk: NotifmeSdk, template: string) {
+    public async sendNotification(event: Event, sdk: NotifmeSdk, template: string, templateData?: any) {
         try {
 
             let jsons: string = ''
@@ -146,6 +146,8 @@ export class SlackService implements Handler {
                 const date = moment(event.eventTime);
                 event.payload.scoopNotificationConfig.data.interceptedAt = date.unix();
                 jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
+            }else if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
+                jsons = Mustache.render(template, templateData);
             }else{
                 let parsedEvent = this.mh.parseEvent(event as Event, true);
                 jsons = Mustache.render(template, parsedEvent);

@@ -23,7 +23,7 @@ import { WebhookConfig } from "../../entities/webhookconfig";
 import { WebhookService } from "../../destination/destinationHandlers/webhookHandler";
 import { SESService } from "../../destination/destinationHandlers/sesHandler";
 import { SMTPService } from "../../destination/destinationHandlers/smtpHandler";
-import { EVENT_TYPE } from "../../common/types";
+import { EVENT_TYPE, AuditChannelEntry } from "../../common/types";
 import {SlackService} from "../../destination/destinationHandlers/slackHandler";
 import {NotifmeSdk} from 'notifme-sdk'
 import {CustomError, CustomResponse} from "../../entities/events";
@@ -181,6 +181,14 @@ class NotificationService {
                 return await this.handleScoopNotification(event);
             }
 
+            // Handle audit log notification events (bypasses notificationSettings lookup,
+            // same as scoop notification - destinations are pre-resolved by the orchestrator
+            // and embedded inline in the payload as an array to support fan-out to multiple channels)
+            if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
+                this.logger.info(`Processing audit log notification event`);
+                return await this.handleAuditLogNotification(event);
+            }
+
             // Validate event
             if (!this.isValidEvent(event)) {
                 this.logger.error(`Invalid event: ${JSON.stringify({
@@ -269,6 +277,99 @@ class NotificationService {
                 this.logger.error(`Stack trace: ${error.stack}`);
             }
             throw error; // Let the parent function handle the error
+        }
+    }
+
+    /**
+     * Handle audit log notification events (webhook and/or slack, possibly multiple destinations).
+     * Mirrors handleScoopNotification's bypass-settings-lookup strategy, but iterates an array
+     * of pre-resolved destinations instead of checking two single fields, since an audit action
+     * can match several rules each pointing at a different channel.
+     * v1 scope: webhook and Slack only - SES/SMTP (email) are not supported by this bypass.
+     * @param event The audit log notification event
+     * @returns CustomResponse with status and message
+     */
+    private async handleAuditLogNotification(event: Event): Promise<CustomResponse> {
+        try {
+            this.logger.info(`Handling audit log notification for event ID: ${event.correlationId}`);
+
+            const entries: AuditChannelEntry[] = event.payload.auditNotificationConfig;
+            if (!entries || entries.length === 0) {
+                this.logger.error(`No audit notification channels found in payload`);
+                return new CustomResponse("", 0, new CustomError("no audit notification channels found in payload", 400));
+            }
+
+            this.logger.info(`Found ${entries.length} audit notification channel(s) to process`);
+            for (const entry of entries) {
+                if (entry.dest === "webhook" && entry.webhookConfig) {
+                    this.logger.info(`Processing audit webhook notification for configId: ${entry.configId}`);
+                    await this.sendAuditWebhookNotification(event, entry);
+                } else if (entry.dest === "slack" && entry.slackConfig) {
+                    this.logger.info(`Processing audit slack notification for configId: ${entry.configId}`);
+                    await this.sendAuditSlackNotification(event, entry);
+                } else {
+                    this.logger.warn(`Skipping audit notification entry with unsupported/invalid dest: ${JSON.stringify(entry)}`);
+                }
+                // v1 scope: webhook and Slack only - SES/SMTP (email) are NOT supported by this bypass.
+                // Scoop's inline-destination shape only fits webhook/Slack's config shape (a URL + headers),
+                // not SES/SMTP's. If email support is needed later, route audit events through the normal
+                // notificationSettings-driven path instead of this bypass.
+            }
+
+            this.logger.info(`Audit log notification(s) processed successfully`);
+            return new CustomResponse("notification sent", 200);
+        } catch (error: any) {
+            const errorMessage = error.message || 'Unknown error';
+            this.logger.error(`Error in handleAuditLogNotification: ${errorMessage}`);
+            if (error.stack) {
+                this.logger.error(`Stack trace: ${error.stack}`);
+            }
+            throw error; // Let the parent function handle the error
+        }
+    }
+
+    // this function is used to send webhook notification for a single audit log notification channel entry
+    private async sendAuditWebhookNotification(event: Event, entry: AuditChannelEntry) {
+        for (const h of this.handlers) {
+            if (h instanceof WebhookService) {
+                let setting = new NotificationSettings()
+                setting.event_type_id = event.eventTypeId
+                setting.pipeline_id = 0
+                setting.config = event.payload
+                const webhookTemplate = entry.webhookConfig as WebhookConfig
+                await h.sendAndLogNotification(event, webhookTemplate, setting, {"dest": entry.dest, "configId": entry.configId}, entry.data)
+            }
+        }
+    }
+
+    // this function is used to send slack notification for a single audit log notification channel entry
+    private async sendAuditSlackNotification(event: Event, entry: AuditChannelEntry) {
+        for (const h of this.handlers) {
+            if (h instanceof SlackService) {
+                const templateResults: NotificationTemplates[] = await this.templatesRepository.findByEventTypeIdAndChannelType(event.eventTypeId, "slack")
+                if (!templateResults) {
+                    this.logger.info("no templates found for event ", event);
+                    return
+                }
+
+                const slackTemplateConfig = templateResults[0]
+                let sdk: NotifmeSdk = new NotifmeSdk({
+                    channels: {
+                        slack: {
+                            providers: [{
+                                type: 'webhook',
+                                webhookUrl: entry.slackConfig.webhookUrl
+                            }]
+                        }
+                    }
+                });
+
+                let setting = new NotificationSettings()
+                setting.event_type_id = event.eventTypeId
+                setting.pipeline_id = 0
+                setting.config = event.payload
+                await h.sendAndLogNotification(event, sdk, setting, {"dest": entry.dest, "configId": entry.configId}, slackTemplateConfig, entry.data)
+            }
         }
     }
 
@@ -561,6 +662,12 @@ class NotificationService {
             // Check if it's a scoop notification event (special case)
             if (event.eventTypeId == EVENT_TYPE.ScoopNotification) {
                 this.logger.info(`Event is a scoop notification, validation passed`);
+                return true;
+            }
+
+            // Check if it's an audit log notification event (special case, same bypass as scoop)
+            if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
+                this.logger.info(`Event is an audit log notification, validation passed`);
                 return true;
             }
 

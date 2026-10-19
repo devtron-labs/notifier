@@ -66,11 +66,11 @@ export class WebhookService implements Handler{
 
     }
 
-    public async sendAndLogNotification(event: Event, webhookTemplate: WebhookConfig, setting: NotificationSettings, p: any) {
+    public async sendAndLogNotification(event: Event, webhookTemplate: WebhookConfig, setting: NotificationSettings, p: any, templateData?: any) {
         const payload=typeof webhookTemplate.payload==="object"?JSON.stringify(webhookTemplate.payload) : webhookTemplate.payload;
 
         try {
-            const result = await this.sendNotification(event, webhookTemplate.web_hook_url, payload,webhookTemplate.header)
+            const result = await this.sendNotification(event, webhookTemplate.web_hook_url, payload, webhookTemplate.header, templateData)
             await this.saveNotificationEventSuccessLog(result, event, p, setting);
         } catch (error: any) {
             this.logger.error(error.message);
@@ -104,7 +104,7 @@ export class WebhookService implements Handler{
         })
     }
 
-    public async sendNotification(event: Event, webhookUrl: string, template: string, headers?: Record<string, string>) {
+    public async sendNotification(event: Event, webhookUrl: string, template: string, headers?: Record<string, string>, templateData?: any) {
         try {
             if(!template){
                 this.logger.error("template is empty")
@@ -115,6 +115,8 @@ export class WebhookService implements Handler{
                 const date = moment(event.eventTime);
                 event.payload.scoopNotificationConfig.data.interceptedAt = date.unix();
                 jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
+            }else if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
+                jsons = Mustache.render(template, templateData);
             }else {
                 let parsedEvent = this.mh.parseEventForWebhook(event as Event);
                 jsons = Mustache.render(template, parsedEvent);
