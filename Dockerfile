@@ -7,7 +7,7 @@ RUN npm ci
 COPY /.  .
 RUN npm run build-ts
 
-FROM node:24.22.1
+FROM node:24.22.1-trixie-slim
 
 RUN groupadd -r devtron && useradd -r -g devtron devtron
 
