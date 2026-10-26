@@ -25,7 +25,7 @@ import { SESService } from "../../destination/destinationHandlers/sesHandler";
 import { SMTPService } from "../../destination/destinationHandlers/smtpHandler";
 import { EVENT_TYPE, AuditChannelEntry } from "../../common/types";
 import {SlackService} from "../../destination/destinationHandlers/slackHandler";
-import {NotifmeSdk} from 'notifme-sdk'
+import NotifmeSdk from 'notifme-sdk'
 import {CustomError, CustomResponse} from "../../entities/events";
 
 export interface Handler {
