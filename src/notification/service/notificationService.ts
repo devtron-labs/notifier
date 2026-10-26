@@ -347,7 +347,7 @@ class NotificationService {
         for (const h of this.handlers) {
             if (h instanceof SlackService) {
                 const templateResults: NotificationTemplates[] = await this.templatesRepository.findByEventTypeIdAndChannelType(event.eventTypeId, "slack")
-                if (!templateResults) {
+                if (!templateResults || templateResults.length === 0) {
                     this.logger.info("no templates found for event ", event);
                     return
                 }
