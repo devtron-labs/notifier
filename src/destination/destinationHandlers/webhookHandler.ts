@@ -21,6 +21,7 @@ import Mustache from 'mustache';
 import { EventLogBuilder } from "../../common/eventLogBuilder";
 import { MustacheHelper } from '../../common/mustacheHelper';
 import { EVENT_TYPE } from "../../common/types";
+import { waitForDestinationTurn } from "../../common/destinationRateLimiter";
 import { NotificationSettings } from "../../entities/notificationSettings";
 import { WebhookConfig } from '../../entities/webhookconfig';
 import { Event, Handler } from '../../notification/service/notificationService';
@@ -127,6 +128,9 @@ export class WebhookService implements Handler{
 
             if (headers) {
                 headerConfig.headers = headers;
+            }
+            if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
+                await waitForDestinationTurn(`webhook:${webhookUrl}`);
             }
             const res = await axios.post(webhookUrl, j, headerConfig);
             this.logger.info("Notification Sent Successfully");

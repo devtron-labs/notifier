@@ -25,6 +25,7 @@ import {NotificationSettings} from "../../entities/notificationSettings";
 import {SlackConfigRepository} from "../../repository/slackConfigRepository";
 import {MustacheHelper} from '../../common/mustacheHelper';
 import {EVENT_TYPE} from "../../common/types";
+import {waitForDestinationTurn} from "../../common/destinationRateLimiter";
 import moment from "moment-timezone";
 import {CustomError} from "../../entities/events";
 
@@ -83,6 +84,10 @@ export class SlackService implements Handler {
             } else {
                 this.logger.info('duplicate webHook filtered out')
                 return
+            }
+
+            if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
+                await waitForDestinationTurn(`slack:${config['web_hook_url']}`);
             }
 
             let sdk: NotifmeSdk = new NotifmeSdk({
