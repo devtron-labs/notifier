@@ -214,23 +214,33 @@ export class SMTPService implements Handler {
 
     public async sendNotification(event: Event, sdk: NotifmeSdk, template: string) {
         try {
-            let parsedEvent = this.mh.parseEvent(event);
-            parsedEvent['fromEmail'] = event.payload['fromEmail'];
-            parsedEvent['toEmail'] = event.payload['toEmail'];
             let json: string
-            // Handle Approval, ImagePromotion, DeploymentApproved, and PromotionApproved events
-            if(event.eventTypeId===4 || event.eventTypeId === EVENT_TYPE.ImagePromotion ||
-               event.eventTypeId === EVENT_TYPE.DeploymentApproved || event.eventTypeId === EVENT_TYPE.PromotionApproved){
-                let commentDisplayStyle = (event.payload.imageComment === "") ? 'none' : 'inline';
-                let tagDisplayStyle = (event.payload.imageTagNames === null) ? 'none' : 'inline';
-                json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle ,tagDisplayStyle});
-            }
-            // Handle ConfigApproval and ConfigApproved events
-            else if(event.eventTypeId===5 || event.eventTypeId === EVENT_TYPE.ConfigApproved){
-                let commentDisplayStyle = (event.payload.protectConfigComment === "") ? 'none' : 'inline';
-                json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle });
-            }else{
-                json = Mustache.render(template, parsedEvent)
+            if (event.eventTypeId === EVENT_TYPE.AuditLogNotification) {
+                // Audit events have no pipelineType/appName shape parseEvent expects - render
+                // directly against auditData, merging in the recipient fields set above.
+                json = Mustache.render(template, {
+                    ...event.payload.auditData,
+                    fromEmail: event.payload['fromEmail'],
+                    toEmail: event.payload['toEmail'],
+                });
+            } else {
+                let parsedEvent = this.mh.parseEvent(event);
+                parsedEvent['fromEmail'] = event.payload['fromEmail'];
+                parsedEvent['toEmail'] = event.payload['toEmail'];
+                // Handle Approval, ImagePromotion, DeploymentApproved, and PromotionApproved events
+                if(event.eventTypeId===4 || event.eventTypeId === EVENT_TYPE.ImagePromotion ||
+                   event.eventTypeId === EVENT_TYPE.DeploymentApproved || event.eventTypeId === EVENT_TYPE.PromotionApproved){
+                    let commentDisplayStyle = (event.payload.imageComment === "") ? 'none' : 'inline';
+                    let tagDisplayStyle = (event.payload.imageTagNames === null) ? 'none' : 'inline';
+                    json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle ,tagDisplayStyle});
+                }
+                // Handle ConfigApproval and ConfigApproved events
+                else if(event.eventTypeId===5 || event.eventTypeId === EVENT_TYPE.ConfigApproved){
+                    let commentDisplayStyle = (event.payload.protectConfigComment === "") ? 'none' : 'inline';
+                    json = Mustache.render(template, { ...parsedEvent, commentDisplayStyle });
+                }else{
+                    json = Mustache.render(template, parsedEvent)
+                }
             }
             const res = await sdk.send(
                 {

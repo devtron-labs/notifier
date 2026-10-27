@@ -128,17 +128,17 @@ export class SlackService implements Handler {
             }
     }
 
-    public async sendAndLogNotification(event: Event, sdk: NotifmeSdk, setting: NotificationSettings, p: any, slackTemplate: NotificationTemplates, templateData?: any){
+    public async sendAndLogNotification(event: Event, sdk: NotifmeSdk, setting: NotificationSettings, p: any, slackTemplate: NotificationTemplates){
         try {
-            const result = await this.sendNotification(event, sdk, slackTemplate.template_payload, templateData)
+            const result = await this.sendNotification(event, sdk, slackTemplate.template_payload)
             await this.saveNotificationEventSuccessLog(result, event, p, setting);
         } catch(error: any) {
             this.logger.error(error.message);
-            this.saveNotificationEventFailureLog(event, p, setting);
+            await this.saveNotificationEventFailureLog(event, p, setting);
         };
     }
 
-    public async sendNotification(event: Event, sdk: NotifmeSdk, template: string, templateData?: any) {
+    public async sendNotification(event: Event, sdk: NotifmeSdk, template: string) {
         try {
 
             let jsons: string = ''
@@ -147,7 +147,7 @@ export class SlackService implements Handler {
                 event.payload.scoopNotificationConfig.data.interceptedAt = date.unix();
                 jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
             }else if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
-                jsons = Mustache.render(template, templateData);
+                jsons = Mustache.render(template, event.payload.auditData);
             }else{
                 let parsedEvent = this.mh.parseEvent(event as Event, true);
                 jsons = Mustache.render(template, parsedEvent);

@@ -217,28 +217,22 @@ export interface ParsedScoopNotification {
     color : string;
 }
 
-// Audit log notification bypass: like ScoopNotification, the orchestrator resolves the
-// matching destinations and embeds them inline in the payload instead of relying on a
-// notificationSettings DB lookup. Unlike Scoop (single webhookConfig OR slackConfig),
-// an audit event can fan out to multiple destinations, hence the array shape.
-export interface AuditChannelEntry {
-    dest: "webhook" | "slack";
-    configId: number;
-    webhookConfig?: { web_hook_url: string; header?: Record<string, string>; payload: string };
-    slackConfig?: { webhookUrl: string };
-    data: {
-        module: string;
-        resource: string;
-        action: string;
-        updatedBy: string;
-        role: string;
-        clientIp: string;
-        requestMethod: string;
-        apiResponseCode: number;
-        responseTime: number;
-        eventTime: string;
-        resourceName?: string;
-    };
+// AuditData is event.payload.auditData for an audit log notification (event type 17).
+// Destinations are NOT carried here - they travel in the normal notificationSettings
+// array, resolved by each channel handler the same way CI/CD destinations are. This is
+// template-render data only, never the audited request payload itself.
+export interface AuditData {
+    module: string;
+    resource: string;
+    action: string;
+    updatedBy: string;
+    role: string;
+    clientIp: string;
+    requestMethod: string;
+    apiResponseCode: number;
+    responseTime: number;
+    eventTime: string;
+    resourceName?: string;
 }
 
 export interface ParsedCDEvent {
