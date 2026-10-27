@@ -1,5 +1,5 @@
 {
-  "text": "Audit: {{module}} / {{action}} on {{resource}} by {{updatedBy}}",
+  "text": "Audit: {{&auditModule}} / {{&auditAction}} on {{&auditResource}} by {{&auditUpdatedBy}}",
   "blocks": [
     {
       "type": "header",
@@ -13,19 +13,19 @@
       "fields": [
         {
           "type": "mrkdwn",
-          "text": "*Module:*\n{{module}}"
+          "text": "*Module:*\n{{&auditModule}}"
         },
         {
           "type": "mrkdwn",
-          "text": "*Action:*\n{{action}}"
+          "text": "*Action:*\n{{&auditAction}}"
         },
         {
           "type": "mrkdwn",
-          "text": "*Resource:*\n{{resource}}"
+          "text": "*Resource:*\n{{&auditResource}}"
         },
         {
           "type": "mrkdwn",
-          "text": "*Resource Name:*\n{{resourceName}}"
+          "text": "*Resource Name:*\n{{&auditResourceName}}"
         }
       ]
     },
@@ -34,19 +34,19 @@
       "fields": [
         {
           "type": "mrkdwn",
-          "text": "*Performed by:*\n{{updatedBy}}"
+          "text": "*Performed by:*\n{{&auditUpdatedBy}}"
         },
         {
           "type": "mrkdwn",
-          "text": "*Role:*\n{{role}}"
+          "text": "*Role:*\n{{&auditRole}}"
         },
         {
           "type": "mrkdwn",
-          "text": "*Time:*\n{{eventTime}}"
+          "text": "*Time:*\n{{&auditEventTime}}"
         },
         {
           "type": "mrkdwn",
-          "text": "*Client IP:*\n{{clientIp}}"
+          "text": "*Client IP:*\n{{&auditClientIp}}"
         }
       ]
     }
