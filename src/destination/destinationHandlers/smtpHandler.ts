@@ -27,6 +27,7 @@ import { SMTPConfigRepository } from '../../repository/smtpConfigRepository';
 import { MustacheHelper } from '../../common/mustacheHelper';
 import {CustomError} from "../../entities/events";
 import {EVENT_TYPE} from "../../common/types";
+import {jsonSafeAuditData} from "../../common/jsonSafe";
 
 //https://github.com/notifme/notifme-sdk/blob/master/src/models/notification-request.js#L132
 export class SMTPService implements Handler {
@@ -219,7 +220,7 @@ export class SMTPService implements Handler {
                 // Audit events have no pipelineType/appName shape parseEvent expects - render
                 // directly against auditData, merging in the recipient fields set above.
                 json = Mustache.render(template, {
-                    ...event.payload.auditData,
+                    ...jsonSafeAuditData(event.payload.auditData),
                     fromEmail: event.payload['fromEmail'],
                     toEmail: event.payload['toEmail'],
                 });

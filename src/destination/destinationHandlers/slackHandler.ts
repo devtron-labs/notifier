@@ -26,6 +26,7 @@ import {SlackConfigRepository} from "../../repository/slackConfigRepository";
 import {MustacheHelper} from '../../common/mustacheHelper';
 import {EVENT_TYPE} from "../../common/types";
 import {waitForDestinationTurn} from "../../common/destinationRateLimiter";
+import {jsonSafeAuditData} from "../../common/jsonSafe";
 import moment from "moment-timezone";
 import {CustomError} from "../../entities/events";
 
@@ -152,7 +153,7 @@ export class SlackService implements Handler {
                 event.payload.scoopNotificationConfig.data.interceptedAt = date.unix();
                 jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
             }else if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
-                jsons = Mustache.render(template, event.payload.auditData);
+                jsons = Mustache.render(template, jsonSafeAuditData(event.payload.auditData));
             }else{
                 let parsedEvent = this.mh.parseEvent(event as Event, true);
                 jsons = Mustache.render(template, parsedEvent);

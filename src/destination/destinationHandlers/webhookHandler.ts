@@ -22,6 +22,7 @@ import { EventLogBuilder } from "../../common/eventLogBuilder";
 import { MustacheHelper } from '../../common/mustacheHelper';
 import { EVENT_TYPE } from "../../common/types";
 import { waitForDestinationTurn } from "../../common/destinationRateLimiter";
+import { jsonSafeAuditData } from "../../common/jsonSafe";
 import { NotificationSettings } from "../../entities/notificationSettings";
 import { WebhookConfig } from '../../entities/webhookconfig';
 import { Event, Handler } from '../../notification/service/notificationService';
@@ -117,7 +118,7 @@ export class WebhookService implements Handler{
                 event.payload.scoopNotificationConfig.data.interceptedAt = date.unix();
                 jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
             }else if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
-                jsons = Mustache.render(template, event.payload.auditData);
+                jsons = Mustache.render(template, jsonSafeAuditData(event.payload.auditData));
             }else {
                 let parsedEvent = this.mh.parseEventForWebhook(event as Event);
                 jsons = Mustache.render(template, parsedEvent);

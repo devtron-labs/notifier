@@ -26,6 +26,7 @@ import {SESConfigRepository} from "../../repository/sesConfigRepository";
 import {UsersRepository} from "../../repository/usersRepository";
 import { MustacheHelper } from '../../common/mustacheHelper';
 import {EVENT_TYPE} from "../../common/types";
+import {jsonSafeAuditData} from "../../common/jsonSafe";
 import {CustomError} from "../../entities/events";
 
 //https://github.com/notifme/notifme-sdk/blob/master/src/models/notification-request.js#L132
@@ -218,7 +219,7 @@ export class SESService implements Handler {
                 // Audit events have no pipelineType/appName shape parseEvent expects - render
                 // directly against auditData, merging in the recipient fields set above.
                 json = Mustache.render(template, {
-                    ...event.payload.auditData,
+                    ...jsonSafeAuditData(event.payload.auditData),
                     fromEmail: event.payload['fromEmail'],
                     toEmail: event.payload['toEmail'],
                 });
