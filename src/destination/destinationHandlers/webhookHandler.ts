@@ -21,8 +21,8 @@ import Mustache from 'mustache';
 import { EventLogBuilder } from "../../common/eventLogBuilder";
 import { MustacheHelper } from '../../common/mustacheHelper';
 import { EVENT_TYPE } from "../../common/types";
-import { waitForDestinationTurn } from "../../common/destinationRateLimiter";
-import { jsonSafeAuditData } from "../../common/jsonSafe";
+import { sendPaced } from "../../common/destinationRateLimiter";
+import { jsonSafeAuditData, renderAuditTemplate } from "../../common/jsonSafe";
 import { NotificationSettings } from "../../entities/notificationSettings";
 import { WebhookConfig } from '../../entities/webhookconfig';
 import { Event, Handler } from '../../notification/service/notificationService';
@@ -99,7 +99,12 @@ export class WebhookService implements Handler{
             if (conditions) {
                 engine.addRule({conditions: conditions, event: event});
                 await engine.run(event)
-                await this.sendAndLogNotification(event, webhookTemplate, setting, p);
+            }
+            if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
+                // Queue and return immediately - do not block this handler (and the single
+                // NATS/REST message it's processing) on the pacing delay. See
+                // destinationRateLimiter.ts for why.
+                sendPaced(`webhook:${config['web_hook_url']}`, () => this.sendAndLogNotification(event, webhookTemplate, setting, p));
             } else {
                 await this.sendAndLogNotification(event, webhookTemplate, setting, p);
             }
@@ -118,7 +123,7 @@ export class WebhookService implements Handler{
                 event.payload.scoopNotificationConfig.data.interceptedAt = date.unix();
                 jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
             }else if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
-                jsons = Mustache.render(template, jsonSafeAuditData(event.payload.auditData));
+                jsons = renderAuditTemplate(template, jsonSafeAuditData(event.payload.auditData));
             }else {
                 let parsedEvent = this.mh.parseEventForWebhook(event as Event);
                 jsons = Mustache.render(template, parsedEvent);
@@ -129,9 +134,6 @@ export class WebhookService implements Handler{
 
             if (headers) {
                 headerConfig.headers = headers;
-            }
-            if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
-                await waitForDestinationTurn(`webhook:${webhookUrl}`);
             }
             const res = await axios.post(webhookUrl, j, headerConfig);
             this.logger.info("Notification Sent Successfully");

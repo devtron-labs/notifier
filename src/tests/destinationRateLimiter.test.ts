@@ -1,39 +1,55 @@
 import { expect } from 'chai';
-import { waitForDestinationTurn } from '../common/destinationRateLimiter';
+import { sendPaced } from '../common/destinationRateLimiter';
 
 describe('destinationRateLimiter', () => {
-    it('spaces consecutive calls to the same key ~1s apart', async () => {
+    it('returns immediately instead of waiting for the pacing delay', async () => {
         const key = `test-key-${Date.now()}`;
         const start = Date.now();
-        const elapsed: number[] = [];
-        for (let i = 0; i < 3; i++) {
-            await waitForDestinationTurn(key);
-            elapsed.push(Date.now() - start);
-        }
-        expect(elapsed[1] - elapsed[0]).to.be.at.least(950);
-        expect(elapsed[2] - elapsed[1]).to.be.at.least(950);
-    }).timeout(5000);
-
-    it('does not pace calls to different keys against each other', async () => {
-        const keyA = `key-a-${Date.now()}`;
-        const keyB = `key-b-${Date.now()}`;
-        await waitForDestinationTurn(keyA); // reserves keyA's slot, no wait (first call)
-
-        const start = Date.now();
-        await waitForDestinationTurn(keyB); // must not wait behind keyA
-        expect(Date.now() - start).to.be.lessThan(100);
+        sendPaced(key, async () => {});
+        expect(Date.now() - start).to.be.lessThan(50);
     });
 
-    it('serializes concurrent calls to the same key instead of letting them through together', async () => {
-        const key = `concurrent-key-${Date.now()}`;
+    it('spaces actual sends to the same key ~1s apart', async () => {
+        const key = `test-key-${Date.now()}`;
+        const sentAt: number[] = [];
         const start = Date.now();
-        const [t1, t2, t3] = await Promise.all([
-            waitForDestinationTurn(key).then(() => Date.now() - start),
-            waitForDestinationTurn(key).then(() => Date.now() - start),
-            waitForDestinationTurn(key).then(() => Date.now() - start),
-        ]);
-        const sorted = [t1, t2, t3].sort((a, b) => a - b);
-        expect(sorted[1] - sorted[0]).to.be.at.least(900);
-        expect(sorted[2] - sorted[1]).to.be.at.least(900);
+
+        sendPaced(key, async () => { sentAt.push(Date.now() - start); });
+        sendPaced(key, async () => { sentAt.push(Date.now() - start); });
+        sendPaced(key, async () => { sentAt.push(Date.now() - start); });
+
+        // Expected completion is ~2000ms (2 x 1000ms gaps); the margin above that is
+        // slack for event-loop scheduling jitter when the full suite runs together,
+        // not slack in the pacing guarantee itself (see the "at least 950ms" checks
+        // below, which are the actual assertion).
+        await new Promise((r) => setTimeout(r, 4500));
+
+        expect(sentAt).to.have.lengthOf(3);
+        expect(sentAt[1] - sentAt[0]).to.be.at.least(950);
+        expect(sentAt[2] - sentAt[1]).to.be.at.least(950);
+    }).timeout(7000);
+
+    it('does not pace sends to different keys against each other', async () => {
+        const keyA = `key-a-${Date.now()}`;
+        const keyB = `key-b-${Date.now()}`;
+        let sentA = false, sentB = false;
+
+        sendPaced(keyA, async () => { sentA = true; });
+        sendPaced(keyB, async () => { sentB = true; });
+
+        await new Promise((r) => setTimeout(r, 50));
+        expect(sentA).to.be.true;
+        expect(sentB).to.be.true;
+    });
+
+    it('keeps sending queued items even if an earlier send in the queue fails', async () => {
+        const key = `fail-key-${Date.now()}`;
+        let secondSent = false;
+
+        sendPaced(key, async () => { throw new Error('simulated send failure'); });
+        sendPaced(key, async () => { secondSent = true; });
+
+        await new Promise((r) => setTimeout(r, 1300));
+        expect(secondSent).to.be.true;
     }).timeout(5000);
 });
