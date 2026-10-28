@@ -217,6 +217,24 @@ export interface ParsedScoopNotification {
     color : string;
 }
 
+// AuditData is event.payload.auditData for an audit log notification (event type 17).
+// Destinations are NOT carried here - they travel in the normal notificationSettings
+// array, resolved by each channel handler the same way CI/CD destinations are. This is
+// template-render data only, never the audited request payload itself.
+export interface AuditData {
+    module: string;
+    resource: string;
+    action: string;
+    updatedBy: string;
+    role: string;
+    clientIp: string;
+    requestMethod: string;
+    apiResponseCode: number;
+    responseTime: number;
+    eventTime: string;
+    resourceName?: string;
+}
+
 export interface ParsedCDEvent {
     eventTime: number | string;
     slackTimestamp?: string;
@@ -260,6 +278,7 @@ export enum EVENT_TYPE {
     ConfigCancelled = 14,
     PromotionCancelled = 15,
     DeploymentDeclined = 16,
+    AuditLogNotification = 17,
 }
 
 export enum ENV_TYPE_INT{

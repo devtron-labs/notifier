@@ -25,6 +25,8 @@ import {NotificationSettings} from "../../entities/notificationSettings";
 import {SlackConfigRepository} from "../../repository/slackConfigRepository";
 import {MustacheHelper} from '../../common/mustacheHelper';
 import {EVENT_TYPE} from "../../common/types";
+import {sendPaced} from "../../common/destinationRateLimiter";
+import {jsonSafeAuditData, slackSafeAuditData, renderAuditTemplate} from "../../common/jsonSafe";
 import moment from "moment-timezone";
 import {CustomError} from "../../entities/events";
 
@@ -98,33 +100,45 @@ export class SlackService implements Handler {
             let engine = new Engine();
             // let options = { allowUndefinedFacts: true }
             let conditions: string = p["rule"]["conditions"];
-            if (conditions) {
-              engine.addRule({ conditions: conditions, event: event });
-              try {
-                await engine.run(event);
-                const result = await this.sendNotification(
-                  event,
-                  sdk,
-                  slackTemplate.template_payload
-                );
-                await this.saveNotificationEventSuccessLog(
-                  result,
-                  event,
-                  p,
-                  setting
-                );
-              } catch (error: any) {
-                this.logger.error(error.message);
-                await this.saveNotificationEventFailureLog(event, p, setting);
-              }
+
+            const doSend = async () => {
+                if (conditions) {
+                    engine.addRule({ conditions: conditions, event: event });
+                    try {
+                        await engine.run(event);
+                        const result = await this.sendNotification(
+                            event,
+                            sdk,
+                            slackTemplate.template_payload
+                        );
+                        await this.saveNotificationEventSuccessLog(
+                            result,
+                            event,
+                            p,
+                            setting
+                        );
+                    } catch (error: any) {
+                        this.logger.error(error.message);
+                        await this.saveNotificationEventFailureLog(event, p, setting);
+                    }
+                } else {
+                    await this.sendAndLogNotification(
+                        event,
+                        sdk,
+                        setting,
+                        p,
+                        slackTemplate
+                    );
+                }
+            };
+
+            if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
+                // Queue and return immediately - do not block this handler (and the single
+                // NATS/REST message it's processing) on the pacing delay. See
+                // destinationRateLimiter.ts for why.
+                sendPaced(`slack:${config['web_hook_url']}`, doSend);
             } else {
-              await this.sendAndLogNotification(
-                event,
-                sdk,
-                setting,
-                p,
-                slackTemplate
-              );
+                await doSend();
             }
     }
 
@@ -134,7 +148,7 @@ export class SlackService implements Handler {
             await this.saveNotificationEventSuccessLog(result, event, p, setting);
         } catch(error: any) {
             this.logger.error(error.message);
-            this.saveNotificationEventFailureLog(event, p, setting);
+            await this.saveNotificationEventFailureLog(event, p, setting);
         };
     }
 
@@ -146,6 +160,8 @@ export class SlackService implements Handler {
                 const date = moment(event.eventTime);
                 event.payload.scoopNotificationConfig.data.interceptedAt = date.unix();
                 jsons = Mustache.render(template, event.payload.scoopNotificationConfig.data);
+            }else if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
+                jsons = renderAuditTemplate(template, jsonSafeAuditData(slackSafeAuditData(event.payload.auditData)));
             }else{
                 let parsedEvent = this.mh.parseEvent(event as Event, true);
                 jsons = Mustache.render(template, parsedEvent);
