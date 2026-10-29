@@ -25,7 +25,7 @@ import { SESService } from "../../destination/destinationHandlers/sesHandler";
 import { SMTPService } from "../../destination/destinationHandlers/smtpHandler";
 import { EVENT_TYPE } from "../../common/types";
 import {SlackService} from "../../destination/destinationHandlers/slackHandler";
-import {NotifmeSdk} from 'notifme-sdk'
+import NotifmeSdk from 'notifme-sdk'
 import {CustomError, CustomResponse} from "../../entities/events";
 
 export interface Handler {
@@ -271,7 +271,6 @@ class NotificationService {
             throw error; // Let the parent function handle the error
         }
     }
-
 
     /**
      * Prepare notification maps for tracking destinations and configs
@@ -561,6 +560,12 @@ class NotificationService {
             // Check if it's a scoop notification event (special case)
             if (event.eventTypeId == EVENT_TYPE.ScoopNotification) {
                 this.logger.info(`Event is a scoop notification, validation passed`);
+                return true;
+            }
+
+            // Check if it's an audit log notification event (special case, same bypass as scoop)
+            if (event.eventTypeId == EVENT_TYPE.AuditLogNotification) {
+                this.logger.info(`Event is an audit log notification, validation passed`);
                 return true;
             }
 

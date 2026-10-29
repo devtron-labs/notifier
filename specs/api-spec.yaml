@@ -26,7 +26,10 @@ components:
       properties:
         eventTypeId:
           type: integer
-          description: Id referring to event type like CI/CD triggered (1), successful (2) or failure (3).
+          description: >-
+            Id referring to event type like CI/CD triggered (1), successful (2),
+            failure (3), or audit log notification (17, no notificationSettings
+            lookup — destination is inline in payload.auditNotificationConfig[]).
           example: 1
         pipelineId:
           type: integer
