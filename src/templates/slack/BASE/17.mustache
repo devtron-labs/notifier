@@ -1,0 +1,54 @@
+{
+  "text": "Audit: {{&auditModule}} / {{&auditAction}} on {{&auditResource}} by {{&auditUpdatedBy}}",
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "Audit Log Notification"
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Module:*\n{{&auditModule}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Action:*\n{{&auditAction}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Resource:*\n{{&auditResource}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Resource Name:*\n{{&auditResourceName}}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Performed by:*\n{{&auditUpdatedBy}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Role:*\n{{&auditRole}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Time:*\n{{&auditEventTime}}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Client IP:*\n{{&auditClientIp}}"
+        }
+      ]
+    }
+  ]
+}
