@@ -1,6 +1,10 @@
 import {createInbox, JetStreamClient, NatsConnection, NatsError, StreamInfo, StringCodec,
     AckPolicy,
-    DeliverPolicy} from "nats";
+    DeliverPolicy,
+    consumerOpts,
+    ConsumerInfo,
+    JetStreamManager,
+    StreamConfig} from "nats";
 import {
     GetStreamSubjects,
     NatsConsumerConfig,
@@ -10,8 +14,6 @@ import {
     NatsTopic,
     NatsTopicMapping, numberOfRetries,
 } from "./utils";
-import {ConsumerOptsBuilderImpl} from "nats/lib/nats-base-client/jsconsumeropts";
-import {ConsumerInfo, JetStreamManager, StreamConfig} from "nats/lib/nats-base-client/types";
 import { natsHistogram } from "../common/metrics";
 
 const consumerNotFoundErrorCode = 10014;
@@ -46,7 +48,7 @@ export class PubSubServiceImpl implements PubSubService {
         const queueName = natsTopicConfig.queueName
         const consumerConfiguration = NatsConsumerWiseConfigMapping.get(consumerName)
         const inbox = createInbox()
-        const consumerOptsDetails = new ConsumerOptsBuilderImpl({
+        const consumerOptsDetails = consumerOpts({
             name: consumerName,
             deliver_subject: inbox,
             durable_name: consumerName,
